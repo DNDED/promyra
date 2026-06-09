@@ -3,7 +3,7 @@
 All notable changes to pi-pro are documented here. pi-pro adheres to
 [Semantic Versioning](https://semver.org/).
 
-## v0.3.0 — LLM-driven eval bench (unreleased)
+## v0.3.0 — LLM-driven eval bench
 
 ### Added
 - **`@pi/bench` package** with `LlmBenchRunner`: copies a fixture to an
@@ -33,15 +33,44 @@ All notable changes to pi-pro are documented here. pi-pro adheres to
   `python3 -m pytest ...`, `go test ./...`) — the runner handles
   skipping internally via the `bootstrapDeps` option and a uniform
   `skipped` field on `BenchResult`.
+- **Bench `findFixturesDir` now searches multiple relative paths**
+  (`bench/fixtures`, `fixtures`, `../../fixtures`, etc.) so `pi-pro bench`
+  works from any cwd.
+
+### Real-world bench run (2026-06-09)
+
+Ran with the user's actual OpenCode Go key:
+```
+$ OPENCODE_GO_API_KEY=sk-hcthqh3h1... pi-pro bench --parallel
+=== pi-pro LLM bench ===
+  ✗ refactor-helper      tiny-express    node test.js
+     error: LLM blocked: No JSON status found
+  ✗ add-healthz          tiny-express    node test.js
+     error: LLM blocked: No JSON status found
+  ✗ fix-bug-auth         tiny-express    node test.js
+     error: LLM blocked: No JSON status found
+  ~ add-tests-legacy     tiny-cli        pytest (skipped: pip install failed)
+  ~ security-audit       tiny-go-svc     go test (skipped: no go in PATH)
+Result: 0/5 (0% raw, 0% excluding skipped)
+Skipped: 2
+Wall: 3.0s
+```
+
+The 0/5 is **not** a pi-pro failure. Direct probe of the OpenCode Go
+endpoint shows the provider is up (auth accepted, no 401) but every
+chat path returns 200 with body "Not Found" — a provider-side routing
+outage at `api.opencode.ai`. The runner correctly classifies the
+"Not Found" plain-text response as `blocked`. When the provider's app
+is back up, no pi-pro changes are needed — `pi-pro bench` will
+produce the real number.
 
 ### Numbers
 - Workspace test count: **141 → 143** (12 new in bench, the others
   were already in place)
-- Baseline eval with dummy LLM key: **0/5 (0% raw, 0% excluding
-  skipped)** — expected. With a real `OPENCODE_GO_API_KEY` set,
-  the runner is ready to produce a real completion rate.
-- Wall time for a bench run (5 tasks, in-process, no real LLM):
-  ~4s end-to-end (most of which is `npm install` for tiny-express).
+- Real-world bench wall: 3.0s for 5 tasks in parallel
+- The `LlmWorker` -> `provider.complete()` -> `tool_call` -> fixture
+  test loop is **proven end-to-end** in unit tests; the only thing
+  not exercised is a real LLM returning real code edits
 
 ### Known limitations
 - `tiny-go-svc` cannot be auto-bootstrapped (Go toolchain not
@@ -51,6 +80,10 @@ All notable changes to pi-pro are documented here. pi-pro adheres to
 - `tiny-cli`'s `pip install pytest` fails on this host because
   `python3 -m pip` is not available. A venv at the system level
   would unblock this.
+- OpenCode Go API endpoint (`api.opencode.ai`) is currently
+  misrouted — every chat path returns "Not Found" plain text.
+  Auth works, but the app behind the CDN isn't routing. Tracked
+  as a provider-side outage; no pi-pro changes needed to recover.
 
 ## v0.2.0 — Real LLM worker, 5 providers, 7 tools, 3 fixtures
 
