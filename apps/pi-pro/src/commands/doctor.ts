@@ -28,7 +28,8 @@ export async function doctor(): Promise<void> {
 
   try {
     const skills = await listSkills(SKILL_BUNDLE_ROOT);
-    checks.push({ name: "@pi/skill-bundle loads", ok: true, detail: `${skills.length} skills` });
+    const allHaveBody = skills.every(s => s.description.length > 0);
+    checks.push({ name: "@pi/skill-bundle loads", ok: allHaveBody, detail: `${skills.length} skills, all with descriptions` });
   } catch (e) {
     checks.push({ name: "@pi/skill-bundle loads", ok: false, detail: (e as Error).message });
   }
