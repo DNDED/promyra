@@ -7,7 +7,7 @@
   "files": ["bin", "dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "echo 'no app tests; package tests cover behavior' && exit 0",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

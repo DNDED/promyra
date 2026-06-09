@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { start } from "./commands/start.js";
 import { resume } from "./commands/resume.js";
 import { replay } from "./commands/replay.js";
-import { merge } from "./commands/merge.js";
+import { runMerge } from "./commands/merge.js";
 import { doctor } from "./commands/doctor.js";
 import { config } from "./commands/config.js";
 
@@ -34,7 +34,7 @@ export function main(): void {
   program
     .command("merge <taskId>")
     .description("rebase worktree and open a PR")
-    .action(async (taskId: string) => merge(taskId));
+    .action(async (taskId: string) => runMerge(taskId));
 
   program
     .command("doctor")
