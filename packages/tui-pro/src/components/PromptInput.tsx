@@ -3,6 +3,8 @@ import { Box, Text, useInput } from "ink";
 import { theme, agentColor } from "../theme.js";
 import { handleKey, INITIAL_RUNTIME, type VimRuntime } from "../util/vim-dispatch.js";
 import type { VimMode, ExCommand } from "../util/vim.js";
+import { getDefaultModes } from "@pi/config";
+import { getModeDisplay } from "../util/agent-mode.js";
 
 export interface PromptInputProps {
   value: string;
@@ -18,6 +20,12 @@ export interface PromptInputProps {
   initialMode?: VimMode;
   /** Called when an ex command is executed (not "none"). */
   onExCommand?: (cmd: ExCommand) => void;
+  /** Current agent mode (build/plan). When provided, shows badge. */
+  agentMode?: string;
+  /** Available agent modes for display. Default from @pi/config. */
+  modes?: ReturnType<typeof getDefaultModes>;
+  /** Called when Tab is pressed in any mode (cycle agent mode). */
+  onTab?: () => void;
 }
 
 function modeLabel(mode: VimMode): string {
@@ -35,15 +43,15 @@ function modeColor(mode: VimMode): string {
 }
 
 function exHelpLine(): string {
-  return ":w write  :q quit  :q! force  :wq save+quit  :clear  :help";
+  return ":w write  :q quit  :q! force  :wq save+quit  :clear  :help  :mode";
 }
 
 function normalHint(): string {
-  return "i:insert  v:visual  ::ex  ^w:del-word  h/l:move  w/b:word  0/$:line";
+  return "i:insert  v:visual  ::ex  ^w:del-word  h/l:move  w/b:word  0/$:line  Tab:mode";
 }
 
 function visualHint(): string {
-  return "esc:normal  d:delete  y:yank  ::ex";
+  return "esc:normal  d:delete  y:yank  ::ex  Tab:mode";
 }
 
 function exHint(): string {
@@ -62,8 +70,14 @@ export function PromptInput({
   width = "100%",
   initialMode = "insert",
   onExCommand,
+  agentMode,
+  modes,
+  onTab,
 }: PromptInputProps) {
   const accent = agentColor(agent);
+  const resolvedModes = modes ?? getDefaultModes();
+  const showAgentBadge = agentMode !== undefined;
+  const modeDisplay = agentMode ? getModeDisplay(agentMode, resolvedModes) : null;
   const [runtime, setRuntime] = React.useState<VimRuntime>(() => ({
     ...INITIAL_RUNTIME,
     state: { ...INITIAL_RUNTIME.state, text: value, cursor: value.length, mode: initialMode },
@@ -88,6 +102,10 @@ export function PromptInput({
 
   useInput((input: string, key: Record<string, boolean>) => {
     if (disabled) return;
+    if (key.tab) {
+      onTab?.();
+      return;
+    }
     setRuntime((r) => {
       const next = handleKey(input, key, r);
       if (next.state.text !== r.state.text) {
@@ -135,6 +153,9 @@ export function PromptInput({
             <Text color={modeColor(mode)} bold>
               {modeLabel(mode)}
             </Text>
+            {showAgentBadge && modeDisplay ? (
+              <Text color={modeDisplay.color} bold>  {modeDisplay.label}{modeDisplay.readOnly ? "  READ-ONLY" : ""}</Text>
+            ) : null}
             {runtime.state.pendingOp !== "none" ? (
               <Text color={theme.warning}>  {runtime.state.pendingOp}{runtime.state.pendingCount > 0 ? runtime.state.pendingCount : ""}</Text>
             ) : null}

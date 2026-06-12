@@ -18,6 +18,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@pi/config": "workspace:*",
     "@pi/context-manager": "workspace:*",
     "@pi/provider": "workspace:*",
     "@pi/swarm": "workspace:*",
