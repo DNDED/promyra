@@ -1,4 +1,4 @@
-import { loadConfig, getApiKey, saveConfig, setApiKey, setModel, setProvider, getApiKey as _getApiKey, defaultModelFor, isAnthropicModel } from "@promyra/provider";
+import { loadConfig, getApiKey, saveConfig, setApiKey, setModel, setProvider, getApiKey as _getApiKey, defaultModelFor, isAnthropicModel } from "@pi/provider";
 import { PI_CONFIG_PATH, PI_AUTH_PATH, piHome } from "../config-paths.js";
 import { existsSync, writeFileSync, mkdirSync, chmodSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";

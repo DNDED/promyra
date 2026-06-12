@@ -51,7 +51,7 @@ function showHelp(): void {
 }
 
 async function printCheck(): Promise<void> {
-  const { loadConfig, getApiKey } = await import("@promyra/provider");
+  const { loadConfig, getApiKey } = await import("@pi/provider");
   const { PI_CONFIG_PATH, PI_AUTH_PATH, piHome } = await import("./config-paths.js");
   console.log(`pi v${PI_VERSION}`);
   console.log("─".repeat(50));

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isAnthropicModel, createProvider, OpenCodeGoProvider, OpenAIProvider } from "@promyra/provider";
+import { isAnthropicModel, createProvider, OpenCodeGoProvider, OpenAIProvider } from "@pi/provider";
 
 describe("pi model router", () => {
   it("routes Anthropic models to OpenCodeGoProvider", () => {

@@ -57,12 +57,12 @@ describe("pi config path constants", () => {
 
 describe("pi subagent wiring", () => {
   it("SubagentRouter exports class", async () => {
-    const { SubagentRouter } = await import("@promyra/subagent");
+    const { SubagentRouter } = await import("@pi/subagent");
     expect(typeof SubagentRouter).toBe("function");
   });
 
   it("classifyTool maps read/edit/bash/grep/glob/webfetch/task", async () => {
-    const { classifyTool } = await import("@promyra/subagent");
+    const { classifyTool } = await import("@pi/subagent");
     expect(classifyTool("read")).toBe("read");
     expect(classifyTool("write")).toBe("write");
     expect(classifyTool("edit")).toBe("edit");
@@ -75,7 +75,7 @@ describe("pi subagent wiring", () => {
   });
 
   it("SubagentRouter.withProvider accepts provider + workdir + model", async () => {
-    const { SubagentRouter } = await import("@promyra/subagent");
+    const { SubagentRouter } = await import("@pi/subagent");
     // We can't actually call withProvider without a real provider, but we can
     // verify the static method exists.
     expect(typeof SubagentRouter.withProvider).toBe("function");
@@ -84,7 +84,7 @@ describe("pi subagent wiring", () => {
 
 describe("pi tools subagent wiring", () => {
   it("provider exports loadConfig, saveConfig, getApiKey, setApiKey", async () => {
-    const mod = await import("@promyra/provider");
+    const mod = await import("@pi/provider");
     expect(typeof mod.loadConfig).toBe("function");
     expect(typeof mod.saveConfig).toBe("function");
     expect(typeof mod.getApiKey).toBe("function");
@@ -92,7 +92,7 @@ describe("pi tools subagent wiring", () => {
   });
 
   it("provider has createProvider, ModelRouter, OpenCodeGoProvider, AnthropicProvider", async () => {
-    const mod = await import("@promyra/provider");
+    const mod = await import("@pi/provider");
     expect(typeof mod.createProvider).toBe("function");
     expect(typeof mod.OpenCodeGoProvider).toBe("function");
     expect(typeof mod.AnthropicProvider).toBe("function");
@@ -101,7 +101,7 @@ describe("pi tools subagent wiring", () => {
 
 describe("pi tasks wiring", () => {
   it("WorktreeStore class available with create/remove/list", async () => {
-    const { WorktreeStore } = await import("@promyra/tasks");
+    const { WorktreeStore } = await import("@pi/tasks");
     expect(typeof WorktreeStore).toBe("function");
     const store = new WorktreeStore(tmpWorkdir);
     expect(typeof store.create).toBe("function");
@@ -110,13 +110,13 @@ describe("pi tasks wiring", () => {
   });
 
   it("WorktreeStore.create throws on invalid taskId", async () => {
-    const { WorktreeStore } = await import("@promyra/tasks");
+    const { WorktreeStore } = await import("@pi/tasks");
     const store = new WorktreeStore(tmpWorkdir);
     expect(() => store.create("not-a-valid-id")).toThrow();
   });
 
   it("CheckpointStore and SessionMemory are exported", async () => {
-    const tasks = await import("@promyra/tasks");
+    const tasks = await import("@pi/tasks");
     expect(typeof tasks.CheckpointStore).toBe("function");
     expect(typeof tasks.SessionMemory).toBe("function");
   });

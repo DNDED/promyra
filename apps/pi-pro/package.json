@@ -1,7 +1,7 @@
 {
-  "name": "pi",
+  "name": "pi-pro",
   "version": "0.1.0",
-  "description": "Minimal coding agent — single LlmWorker, text output, separate ~/.pi/ config",
+  "description": "Sid's improved coding agent — TS fork of pi-mono. v0.5.0 Token/Cost Foundation + v0.6.0 Agent Swarm v1.",
   "type": "module",
   "bin": {
     "pi": "./bin/pi"
@@ -16,13 +16,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@promyra/bench": "workspace:*",
-    "@promyra/optimizer": "workspace:*",
-    "@promyra/provider": "workspace:*",
-    "@promyra/subagent": "workspace:*",
-    "@promyra/swarm": "workspace:*",
-    "@promyra/tasks": "workspace:*",
-    "@promyra/tools": "workspace:*"
+    "@pi/bench": "workspace:*",
+    "@pi/optimizer": "workspace:*",
+    "@pi/provider": "workspace:*",
+    "@pi/subagent": "workspace:*",
+    "@pi/swarm": "workspace:*",
+    "@pi/tasks": "workspace:*",
+    "@pi/tools": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

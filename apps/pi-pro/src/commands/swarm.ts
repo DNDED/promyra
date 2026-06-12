@@ -2,7 +2,7 @@
  * v0.6.0 swarm CLI.
  *
  * Refactors the v0.4.0 simple parallel-dispatch swarm to use the new
- * @promyra/swarm Orchestrator. New flags:
+ * @pi/swarm Orchestrator. New flags:
  *   --plan           show plan + roster, then run
  *   --budget=<usd>  per-swarm cost cap (default $2.00)
  *   --max-retries=N override per-subagent retry policy
@@ -15,10 +15,10 @@
  * Multica preserved as one-shot direct dispatch (bypasses orchestrator).
  */
 
-import { loadConfig, getApiKey, createProvider, type Provider } from "@promyra/provider";
-import { SubagentRouter } from "@promyra/subagent";
-import { Orchestrator, type SubagentDispatcher, swarmId } from "@promyra/swarm";
-import { Scratchpad } from "@promyra/swarm";
+import { loadConfig, getApiKey, createProvider, type Provider } from "@pi/provider";
+import { SubagentRouter } from "@pi/subagent";
+import { Orchestrator, type SubagentDispatcher, swarmId } from "@pi/swarm";
+import { Scratchpad } from "@pi/swarm";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { PI_CONFIG_PATH, PI_AUTH_PATH } from "../config-paths.js";
@@ -165,7 +165,7 @@ export async function swarmGoal(goal: string, workdir: string, flags: SwarmFlags
       budgetUsd: flags.budget,
       maxRetries: flags.maxRetries,
       dispatcher: makeRouterDispatcher({ apiKey, baseUrl: cfg.baseUrl, provider: cfg.provider, mainModel: cfg.model }),
-      scratchpadBase: join(workdir, ".promyra", "swarm"),
+      scratchpadBase: join(workdir, ".pi-pro", "swarm"),
     });
     const plan = await orch.writePlan();
     console.log(renderPlanHuman(plan));
@@ -183,10 +183,10 @@ export async function swarmGoal(goal: string, workdir: string, flags: SwarmFlags
       budgetUsd: flags.budget,
       maxRetries: flags.maxRetries,
       dispatcher: makeRouterDispatcher({ apiKey, baseUrl: cfg.baseUrl, provider: cfg.provider, mainModel: cfg.model }),
-      scratchpadBase: join(workdir, ".promyra", "swarm"),
+      scratchpadBase: join(workdir, ".pi-pro", "swarm"),
     });
     const result = await orch.run();
-    console.log(`[dry-run] plan written to .promyra/swarm/${id}/plan.md`);
+    console.log(`[dry-run] plan written to .pi-pro/swarm/${id}/plan.md`);
     console.log(`status: ${result.status}, cost: $${result.totalCostUsd.toFixed(4)}`);
     return;
   }
@@ -200,7 +200,7 @@ export async function swarmGoal(goal: string, workdir: string, flags: SwarmFlags
     budgetUsd: flags.budget,
     maxRetries: flags.maxRetries,
     dispatcher: makeRouterDispatcher({ apiKey, baseUrl: cfg.baseUrl, provider: cfg.provider, mainModel: cfg.model }),
-    scratchpadBase: join(workdir, ".promyra", "swarm"),
+    scratchpadBase: join(workdir, ".pi-pro", "swarm"),
   });
   const result = await orch.run();
 
@@ -252,14 +252,14 @@ export async function swarmContinue(id: string, workdir: string, flags: SwarmFla
     budgetUsd: flags.budget,
     maxRetries: flags.maxRetries,
     dispatcher: makeRouterDispatcher({ apiKey, baseUrl: cfg.baseUrl, provider: cfg.provider, mainModel: cfg.model }),
-    scratchpadBase: join(workdir, ".promyra", "swarm"),
+    scratchpadBase: join(workdir, ".pi-pro", "swarm"),
   });
   const result = await orch.run();
   console.log(`resumed ${id} → ${result.status}`);
 }
 
 export async function swarmStatus(id: string, workdir: string): Promise<void> {
-  const swarmDir = join(workdir, ".promyra", "swarm", id);
+  const swarmDir = join(workdir, ".pi-pro", "swarm", id);
   try {
     const stateRaw = await readFile(join(swarmDir, "state.json"), "utf8");
     const planRaw = await readFile(join(swarmDir, "plan.md"), "utf8");
@@ -275,7 +275,7 @@ export async function swarmStatus(id: string, workdir: string): Promise<void> {
 }
 
 export async function swarmMerge(id: string, workdir: string): Promise<void> {
-  const { mergeWorktree } = await import("@promyra/swarm");
+  const { mergeWorktree } = await import("@pi/swarm");
   const result = mergeWorktree({
     rootDir: workdir,
     swarmId: swarmId(id),
@@ -292,7 +292,7 @@ export async function swarmMerge(id: string, workdir: string): Promise<void> {
 }
 
 export async function swarmList(workdir: string): Promise<void> {
-  const swarmDir = join(workdir, ".promyra", "swarm");
+  const swarmDir = join(workdir, ".pi-pro", "swarm");
   let entries: string[];
   try {
     entries = await readdir(swarmDir);

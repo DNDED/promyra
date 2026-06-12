@@ -50,8 +50,8 @@ describe("pi config paths", () => {
     expect(piHome()).toBe(join(homedir(), ".pi"));
   });
 
-  it("pi paths are separate from promyra", () => {
-    expect(PI_CONFIG_PATH).not.toContain(".promyra");
-    expect(PI_AUTH_PATH).not.toContain(".promyra");
+  it("pi paths are separate from pi-pro", () => {
+    expect(PI_CONFIG_PATH).not.toContain(".pi-pro");
+    expect(PI_AUTH_PATH).not.toContain(".pi-pro");
   });
 });

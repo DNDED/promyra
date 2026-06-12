@@ -1,6 +1,6 @@
-import { loadConfig, getApiKey, createProvider } from "@promyra/provider";
-import { SubagentRouter, type SubagentResult, classifyTool } from "@promyra/subagent";
-import { Plan } from "@promyra/tasks";
+import { loadConfig, getApiKey, createProvider } from "@pi/provider";
+import { SubagentRouter, type SubagentResult, classifyTool } from "@pi/subagent";
+import { Plan } from "@pi/tasks";
 import { PI_CONFIG_PATH, PI_AUTH_PATH } from "../config-paths.js";
 import { banner } from "../logo.js";
 

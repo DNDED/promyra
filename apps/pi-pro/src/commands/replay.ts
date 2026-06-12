@@ -4,8 +4,8 @@ import { homedir } from "node:os";
 
 function findSessionDir(taskId: string): string | null {
   const candidates = [
-    join(homedir(), ".promyra", "sessions", taskId),
-    join(process.cwd(), ".promyra", "sessions", taskId),
+    join(homedir(), ".pi-pro", "sessions", taskId),
+    join(process.cwd(), ".pi-pro", "sessions", taskId),
   ];
   for (const c of candidates) if (existsSync(c)) return c;
   return null;

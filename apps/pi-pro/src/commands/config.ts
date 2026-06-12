@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { loadConfig, saveConfig, setApiKey, getApiKey, setProvider, setModel, defaultModelFor } from "@promyra/provider";
+import { loadConfig, saveConfig, setApiKey, getApiKey, setProvider, setModel, defaultModelFor } from "@pi/provider";
 import { PI_CONFIG_PATH, PI_AUTH_PATH } from "../config-paths.js";
 
 function maskKey(k: string): string {

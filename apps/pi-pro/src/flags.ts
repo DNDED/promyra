@@ -11,7 +11,7 @@
  * All default ON (set to "0", "false", or "no" to disable).
  */
 
-import type { OptimizerFlags } from "@promyra/optimizer";
+import type { OptimizerFlags } from "@pi/optimizer";
 
 function envFlag(name: string): boolean {
   const v = process.env[name];

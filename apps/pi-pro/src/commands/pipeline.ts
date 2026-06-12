@@ -1,5 +1,5 @@
-import { loadConfig, getApiKey, createProvider, isAnthropicModel } from "@promyra/provider";
-import { PipelineWorker } from "@promyra/subagent";
+import { loadConfig, getApiKey, createProvider, isAnthropicModel } from "@pi/provider";
+import { PipelineWorker } from "@pi/subagent";
 import {
   createBashTool,
   createReadTool,
@@ -8,8 +8,8 @@ import {
   createGrepTool,
   createGlobTool,
   createWebfetchTool,
-} from "@promyra/tools";
-import type { ToolInstance } from "@promyra/subagent";
+} from "@pi/tools";
+import type { ToolInstance } from "@pi/subagent";
 import { PI_CONFIG_PATH, PI_AUTH_PATH } from "../config-paths.js";
 import { banner } from "../logo.js";
 import { isGitRepo } from "./start.js";

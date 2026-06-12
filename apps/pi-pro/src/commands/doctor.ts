@@ -1,8 +1,8 @@
-import { loadConfig, getApiKey } from "@promyra/provider";
+import { loadConfig, getApiKey } from "@pi/provider";
 import { PI_CONFIG_PATH, PI_AUTH_PATH, piHome } from "../config-paths.js";
-import { SubagentRouter } from "@promyra/subagent";
-import { createProvider, loadConfig as _loadConfig, getApiKey as _getApiKey } from "@promyra/provider";
-import { isAnthropicModel } from "@promyra/provider";
+import { SubagentRouter } from "@pi/subagent";
+import { createProvider, loadConfig as _loadConfig, getApiKey as _getApiKey } from "@pi/provider";
+import { isAnthropicModel } from "@pi/provider";
 import { existsSync, accessSync } from "node:fs";
 import { execSync } from "node:child_process";
 
@@ -73,8 +73,8 @@ async function buildSmokeTest(): Promise<{ ok: boolean; msg: string }> {
 
 async function pipelineSmokeTest(): Promise<{ ok: boolean; msg: string }> {
   try {
-    const { PipelineWorker } = await import("@promyra/subagent");
-    const { createBashTool, createReadTool, createGrepTool, createGlobTool } = await import("@promyra/tools");
+    const { PipelineWorker } = await import("@pi/subagent");
+    const { createBashTool, createReadTool, createGrepTool, createGlobTool } = await import("@pi/tools");
     const cfg = await _loadConfig(PI_CONFIG_PATH).catch(() => null);
     if (!cfg) return { ok: false, msg: "config not loadable" };
     const key = await _getApiKey(cfg.provider, PI_AUTH_PATH);
@@ -97,7 +97,7 @@ async function pipelineSmokeTest(): Promise<{ ok: boolean; msg: string }> {
 
 async function swarmSmokeTest(): Promise<{ ok: boolean; msg: string }> {
   try {
-    const { SubagentRouter } = await import("@promyra/subagent");
+    const { SubagentRouter } = await import("@pi/subagent");
     const cfg = await _loadConfig(PI_CONFIG_PATH).catch(() => null);
     if (!cfg) return { ok: false, msg: "config not loadable" };
     const key = await _getApiKey(cfg.provider, PI_AUTH_PATH);

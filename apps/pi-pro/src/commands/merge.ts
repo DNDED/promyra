@@ -2,12 +2,12 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { WorktreeStore } from "@promyra/tasks";
+import { WorktreeStore } from "@pi/tasks";
 
 function findWorktreePath(taskId: string, cwd: string): string | null {
   const candidates = [
-    join(cwd, ".promyra", "worktrees", taskId),
-    join(homedir(), ".promyra", "worktrees", taskId),
+    join(cwd, ".pi-pro", "worktrees", taskId),
+    join(homedir(), ".pi-pro", "worktrees", taskId),
   ];
   for (const c of candidates) {
     if (existsSync(join(c, ".git"))) return c;
@@ -50,8 +50,8 @@ export async function runMerge(taskId: string): Promise<void> {
   const wt = findWorktreePath(taskId, cwd);
   if (!wt) {
     console.error(`✗ no worktree found for ${taskId}`);
-    console.error(`  searched: ${cwd}/.promyra/worktrees/${taskId}`);
-    console.error(`           ${homedir()}/.promyra/worktrees/${taskId}`);
+    console.error(`  searched: ${cwd}/.pi-pro/worktrees/${taskId}`);
+    console.error(`           ${homedir()}/.pi-pro/worktrees/${taskId}`);
     console.error(`  run a successful build first: pi "<task>"`);
     process.exit(1);
   }
@@ -60,7 +60,7 @@ export async function runMerge(taskId: string): Promise<void> {
   console.log(`  worktree: ${wt}`);
 
   // Read evidence from replay if available
-  const evidenceFile = join(wt, ".promyra", "evidence.txt");
+  const evidenceFile = join(wt, ".pi-pro", "evidence.txt");
   const evidence = existsSync(evidenceFile) ? readFileSync(evidenceFile, "utf8") : "(no evidence recorded)";
 
   try {

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { LlmBenchRunner } from "@promyra/bench";
-import { createProvider } from "@promyra/provider";
+import { LlmBenchRunner } from "@pi/bench";
+import { createProvider } from "@pi/provider";
 
 const FIXTURES = "/home/trader/Developer/pi-pro/bench/fixtures";
 
 describe("pi bench", () => {
-  it("LlmBenchRunner is exported from @promyra/bench", () => {
+  it("LlmBenchRunner is exported from @pi/bench", () => {
     expect(typeof LlmBenchRunner).toBe("function");
   });
 

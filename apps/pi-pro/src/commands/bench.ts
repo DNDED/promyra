@@ -2,8 +2,8 @@ import { existsSync, mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadConfig, getApiKey, createProvider } from "@promyra/provider";
-import { LlmBenchRunner, type BenchSummary, type BenchResult } from "@promyra/bench";
+import { loadConfig, getApiKey, createProvider } from "@pi/provider";
+import { LlmBenchRunner, type BenchSummary, type BenchResult } from "@pi/bench";
 import { PI_CONFIG_PATH, PI_AUTH_PATH } from "../config-paths.js";
 
 const PI_VERSION = "0.3.0";
@@ -136,7 +136,7 @@ export async function benchCommand(opts: BenchOpts = {}): Promise<void> {
     runnerOpts.benchFixturesRel = fixturesPath;
     console.log(`  fixtures:    ${fixturesPath}`);
     const runner = new LlmBenchRunner(provider, runnerOpts);
-    const { TASKS: allTasks } = await import("@promyra/bench");
+    const { TASKS: allTasks } = await import("@pi/bench");
     const taskFilter = opts.tasks && opts.tasks.length > 0 ? new Set(opts.tasks) : null;
     const taskCount = taskFilter ? allTasks.filter((t: { id: string }) => taskFilter.has(t.id)).length : allTasks.length;
     const taskList = taskFilter

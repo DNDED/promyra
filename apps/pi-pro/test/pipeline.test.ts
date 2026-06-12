@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { PipelineWorker } from "@promyra/subagent";
-import { createProvider } from "@promyra/provider";
-import { createBashTool, createReadTool, createGrepTool, createGlobTool } from "@promyra/tools";
+import { PipelineWorker } from "@pi/subagent";
+import { createProvider } from "@pi/provider";
+import { createBashTool, createReadTool, createGrepTool, createGlobTool } from "@pi/tools";
 
 describe("pi pipeline", () => {
   it("PipelineWorker.default constructs without args", () => {
