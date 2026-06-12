@@ -5,7 +5,7 @@
  * setWidget, sendUserMessage, appendEntry) and config persistence.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync, mkdirSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -38,6 +38,7 @@ interface MockPi {
   registerFlag: (name: string, opts: any) => void;
   setActiveTools: (names: string[]) => void;
   getActiveTools: () => string[];
+  getAllTools: () => Array<{ name: string }>;
   sendUserMessage: (content: any, options?: any) => void;
   sendMessage: (message: any, options?: any) => void;
   appendEntry: (type: string, data?: any) => void;
@@ -82,6 +83,7 @@ function makeMockPi(): MockPi {
     pi.activeTools = names;
   };
   pi.getActiveTools = () => pi.activeTools ?? [];
+  pi.getAllTools = () => [];
   pi.sendUserMessage = (content, options) => {
     pi.sentMessages.push({ type: "user", content, options });
   };
@@ -167,6 +169,7 @@ let tmpHome: string;
 let originalHome: string;
 let originalXdg: string | undefined;
 const configPath = () => join(tmpHome, ".pi", "agent", "pi.json");
+const getAuthPath = () => join(tmpHome, ".pi", "agent");
 const writeConfig = (data: object) => {
   mkdirSync(join(tmpHome, ".pi", "agent"), { recursive: true });
   writeFileSync(configPath(), JSON.stringify(data) as string);
@@ -181,6 +184,9 @@ beforeEach(() => {
   delete process.env.XDG_CONFIG_HOME;
   process.env.NO_COLOR = "1";
   process.env.TERM = "dumb";
+  delete process.env.OPENCODE_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.OPENAI_API_KEY;
 });
 
 afterEach(() => {
@@ -214,12 +220,15 @@ async function loadExtension(): Promise<{ pi: MockPi; ui: MockUI; reload: () => 
 }
 
 describe("extension wiring", () => {
-  it("registers 13 commands", async () => {
+  it("registers commands with both /name and :name aliases", async () => {
     const { pi } = await loadExtension();
-    const expected = ["mode", "plan", "todos", "config", "doctor", "theme", "memory-add", "memory-list", "memory-search", "memory-clear", "btw", "context"];
-    for (const name of expected) {
-      expect(pi.commands.has(name), `command ${name} registered`).toBe(true);
+    const names = ["mode", "plan", "todos", "config", "doctor", "login", "memory-add", "memory-list", "memory-search", "memory-clear", "btw", "context"];
+    for (const name of names) {
+      expect(pi.commands.has(name), `command /${name} registered`).toBe(true);
+      expect(pi.commands.has(`:${name}`), `command :${name} registered`).toBe(true);
     }
+    expect(pi.commands.has("theme")).toBe(true);
+    expect(pi.commands.has(":theme")).toBe(true);
   });
 
   it("registers the todo tool", async () => {
@@ -242,14 +251,13 @@ describe("extension wiring", () => {
 });
 
 describe("session_start", () => {
-  it("applies default mode and sets footer status", async () => {
+  it("applies default mode and sets status", async () => {
     const { pi, ui } = await loadExtension();
     const handler = pi.handlers.get("session_start")![0]!;
     const ctx = makeMockCtx({ ui });
     await handler({}, ctx);
-    expect(pi.activeTools).toBeNull();
-    expect(ui.statuses.get("pi-pro-footer")).toBeDefined();
-    expect(ui.statuses.get("pi-pro-footer")!.length).toBeGreaterThan(0);
+    expect(ui.statuses.get("pi-pro")).toBeDefined();
+    expect(ui.statuses.get("pi-pro")!.length).toBeGreaterThan(0);
   });
 
   it("emits build notification by default", async () => {
@@ -259,6 +267,15 @@ describe("session_start", () => {
     const note = ui.notifies.find((n) => n.message.includes("pi-pro v"));
     expect(note).toBeDefined();
     expect(note!.message).toContain("build");
+  });
+
+  it("emits plan notification when config says plan", async () => {
+    writeConfig({ version: 1, provider: { name: "opencode-go", model: "kimi-k2.6" }, agent: { name: "plan", maxIterations: 10, toolBudget: 6 }, theme: { name: "default" } });
+    const { pi, ui } = await loadExtension();
+    const handler = pi.handlers.get("session_start")![0]!;
+    await handler({}, makeMockCtx({ ui }));
+    const note = ui.notifies.find((n) => n.message.includes("read-only"));
+    expect(note).toBeDefined();
   });
 });
 
@@ -442,8 +459,8 @@ describe(":doctor command", () => {
     await cmd.handler(undefined, makeMockCtx({ ui }));
     const note = ui.notifies.find((n) => n.message.includes("pi-pro doctor"));
     expect(note).toBeDefined();
-    expect(note!.message).toContain("theme");
-    expect(note!.message).toContain("color:");
+    expect(note!.message).toContain("provider");
+    expect(note!.message).toContain("mode:");
   });
 
   it("reports env key status", async () => {
@@ -455,31 +472,117 @@ describe(":doctor command", () => {
     expect(note).toBeDefined();
     expect(note!.message).toMatch(/sk-.*cdef/);
   });
+
+  it("shows tool count", async () => {
+    const { pi, ui } = await loadExtension();
+    pi.getAllTools = () => [{ name: "a" }, { name: "b" }, { name: "c" }] as any;
+    const cmd = pi.commands.get("doctor")!;
+    await cmd.handler(undefined, makeMockCtx({ ui }));
+    const note = ui.notifies.find((n) => n.message.includes("3 available"));
+    expect(note).toBeDefined();
+  });
 });
 
-describe(":theme command", () => {
-  it("lists themes when no arg", async () => {
+describe(":theme command (delegates to pi-zentui)", () => {
+  it("tells user pi-zentui owns theme", async () => {
     const { pi, ui } = await loadExtension();
     const cmd = pi.commands.get("theme")!;
     await cmd.handler(undefined, makeMockCtx({ ui }));
-    const notes = ui.notifies.map((n) => n.message);
-    expect(notes.some((m) => m.includes("vivid"))).toBe(true);
-    expect(notes.some((m) => m.includes("monokai"))).toBe(true);
+    const note = ui.notifies.find((n) => n.message.includes("pi-zentui"));
+    expect(note).toBeDefined();
   });
 
-  it("switches theme and persists to config", async () => {
-    const { pi, ui } = await loadExtension();
-    const cmd = pi.commands.get("theme")!;
-    await cmd.handler("vivid", makeMockCtx({ ui }));
-    const cfg = JSON.parse(readFileSync(configPath(), "utf8"));
-    expect(cfg.theme.name).toBe("vivid");
-  });
-
-  it("rejects unknown theme", async () => {
+  it("ignores unknown arg silently", async () => {
     const { pi, ui } = await loadExtension();
     const cmd = pi.commands.get("theme")!;
     await cmd.handler("nope", makeMockCtx({ ui }));
-    expect(ui.notifies.some((n) => n.type === "error")).toBe(true);
+    const note = ui.notifies.find((n) => n.message.includes("pi-zentui"));
+    expect(note).toBeDefined();
+  });
+});
+
+describe(":login command", () => {
+  it("writes key to auth.json with mode 0600", async () => {
+    const { pi, ui } = await loadExtension();
+    const cmd = pi.commands.get("login")!;
+    await cmd.handler("opencode-go sk-test-1234567890", makeMockCtx({ ui }));
+    const authPath = join(getAuthPath(), "auth.json");
+    const stat = statSync(authPath);
+    expect(stat.mode & 0o777).toBe(0o600);
+    const data = JSON.parse(readFileSync(authPath, "utf8"));
+    expect(data["opencode-go"].key).toBe("sk-test-1234567890");
+  });
+
+  it("rejects missing provider", async () => {
+    const { pi, ui } = await loadExtension();
+    const cmd = pi.commands.get("login")!;
+    await cmd.handler("", makeMockCtx({ ui }));
+    expect(ui.notifies.some((n) => n.type === "error" && n.message.includes("usage"))).toBe(true);
+  });
+
+  it("prompts via ctx.ui.input when key missing", async () => {
+    const { pi, ui } = await loadExtension();
+    ui.input = async () => "sk-prompted-key";
+    const cmd = pi.commands.get("login")!;
+    await cmd.handler("opencode-go", makeMockCtx({ ui }));
+    const authPath = join(getAuthPath(), "auth.json");
+    const data = JSON.parse(readFileSync(authPath, "utf8"));
+    expect(data["opencode-go"].key).toBe("sk-prompted-key");
+  });
+
+  it("cancels on empty input", async () => {
+    const { pi, ui } = await loadExtension();
+    ui.input = async () => undefined;
+    const cmd = pi.commands.get("login")!;
+    await cmd.handler("opencode-go", makeMockCtx({ ui }));
+    expect(ui.notifies.some((n) => n.message.includes("cancelled"))).toBe(true);
+  });
+});
+
+describe("Tab shortcut two-way cycle", () => {
+  it("build -> plan -> build restores all tools", async () => {
+    const { pi, ui } = await loadExtension();
+    const sc = pi.shortcuts.get("tab")!;
+    pi.getAllTools = () => [{ name: "bash" }, { name: "read" }, { name: "write" }, { name: "edit" }, { name: "todo" }] as any;
+    pi.handlers.get("session_start")![0]!(undefined, makeMockCtx({ ui }));
+
+    await sc.handler(makeMockCtx({ ui }));
+    expect(pi.activeTools).toEqual(["read", "bash", "grep", "find", "ls", "questionnaire"]);
+
+    await sc.handler(makeMockCtx({ ui }));
+    expect(pi.activeTools).toEqual(["bash", "read", "write", "edit", "todo"]);
+  });
+
+  it("clears plan widget when leaving plan mode", async () => {
+    const { pi, ui } = await loadExtension();
+    writeConfig({ version: 1, provider: { name: "opencode-go", model: "kimi-k2.6" }, agent: { name: "plan", maxIterations: 10, toolBudget: 6 }, theme: { name: "default" } });
+    const sc = pi.shortcuts.get("tab")!;
+    await sc.handler(makeMockCtx({ ui }));
+    expect(ui.widgets.get("pi-pro-plan")).toBeUndefined();
+  });
+});
+
+describe("plan widget lifecycle", () => {
+  it("re-parses on new plan in same session", async () => {
+    const { pi, ui } = await loadExtension();
+    writeConfig({ version: 1, provider: { name: "opencode-go", model: "kimi-k2.6" }, agent: { name: "plan", maxIterations: 10, toolBudget: 6 }, theme: { name: "default" } });
+    const handler = pi.handlers.get("agent_end")![0]!;
+    await handler({ messages: [{ role: "assistant", content: "Plan:\n1. A\n2. B" }] }, makeMockCtx({ ui }));
+    await handler({ messages: [{ role: "assistant", content: "Plan:\n1. New A\n2. New B" }] }, makeMockCtx({ ui }));
+    const lines = ui.widgets.get("pi-pro-plan");
+    expect(lines).toBeDefined();
+    expect(lines!.join(" ")).toMatch(/New A|New B/);
+  });
+
+  it("does not re-parse on identical text", async () => {
+    const { pi } = await loadExtension();
+    writeConfig({ version: 1, provider: { name: "opencode-go", model: "kimi-k2.6" }, agent: { name: "plan", maxIterations: 10, toolBudget: 6 }, theme: { name: "default" } });
+    const handler = pi.handlers.get("agent_end")![0]!;
+    const text = "Plan:\n1. A\n2. B";
+    const ui = makeMockUI();
+    await handler({ messages: [{ role: "assistant", content: text }] }, makeMockCtx({ ui }));
+    const callsAfter1 = (ui.widgets.get("pi-pro-plan")?.length ?? 0);
+    await handler({ messages: [{ role: "assistant", content: text }] }, makeMockCtx({ ui }));
   });
 });
 

@@ -1,37 +1,29 @@
 /**
- * pi-pro v0.2.1 — extension for pi-mono.
+ * pi-pro v0.2.3 — extension for pi-mono.
  *
  * Loaded automatically by `pi` when registered in ~/.pi/agent/settings.json.
- * Provides:
- *   - Agent mode cycle (build/plan) + Tab shortcut
- *   - Plan mode: DESTRUCTIVE_PATTERNS bash gate + read-only tool allowlist
- *   - Todo tool (LLM-callable, state in tool result details)
- *   - Memory: file-based JSONL store (add/search/list/clear)
- *   - Starship-style footer (cwd + branch + git icons + runtime) — themed
- *   - Plan widget ([DONE:n] markers, setWidget aboveEditor) — themed
- *   - Theme system: default, vivid, monokai, noir
- *   - REPL helpers: :mode, :plan, :todos, :config, :doctor, :theme,
- *     /btw, /context, /memory-*
+ * Composes with pi-zentui (also installed) which provides the Starship-style
+ * footer and Opencode-style editor. This extension publishes:
+ *   - "pi-pro" status (mode + version) picked up by pi-zentui
+ *   - "pi-pro-plan" widget above editor for plan-mode progress
  *
- * Install: `pi install ./packages/pi-pro-ext`
+ * Commands (all registered with both `:` and `/` aliases for ergonomics):
+ *   mode, plan, todos, config, doctor, theme, login,
+ *   memory-add, memory-list, memory-search, memory-clear,
+ *   btw, context
+ *
+ * Install: `pi install ./packages/pi-pro-ext` + `pi install npm:pi-zentui`
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { loadConfig, saveConfig, getDefaultModes, cycleMode as cycleModeCfg } from "@pi-pro/config";
 import { execSync } from "node:child_process";
-import { buildColoredFooter } from "./src/footer.js";
+import { writeFileSync, mkdirSync, chmodSync, readFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { homedir } from "node:os";
 import { parsePlanItems, markPlanDone, renderPlanWidget, isSafeBash } from "./src/plan-widget.js";
 import { summarizeGitStatus } from "./src/util/git-status.js";
 import { detectRuntime, formatRuntime } from "./src/util/runtime-detect.js";
-import { detectNerdFonts } from "./src/util/nerd-fonts.js";
-import {
-  getTheme,
-  listThemes,
-  readColorEnv,
-  shouldUseColor,
-  paint,
-  paintMany,
-} from "./src/theme.js";
 import {
   addMemory,
   clearMemory,
@@ -41,38 +33,48 @@ import {
   type MemoryState,
 } from "./src/memory.js";
 
+const VERSION = "0.2.3";
+const STATUS_KEY = "pi-pro";
+const WIDGET_KEY = "pi-pro-plan";
+
 interface TodoItem {
   id: number;
   text: string;
   done: boolean;
 }
 
-const TODO_INIT: { items: TodoItem[]; nextId: number } = { items: [], nextId: 1 };
+interface AgentMode { name: string; label: string; activeTools: string[]; readOnly: boolean; systemPromptAppend?: string; bashAllowlist?: RegExp[] }
 
-function todoAdd(state: typeof TODO_INIT, text: string): { state: typeof TODO_INIT; item?: TodoItem; error?: string } {
-  if (!text.trim()) return { state, error: "text required for add" };
-  const item: TodoItem = { id: state.nextId, text: text.trim(), done: false };
-  return { state: { items: [...state.items, item], nextId: state.nextId + 1 }, item };
+const PLAN_MODE_TOOLS = ["read", "bash", "grep", "find", "ls", "questionnaire"];
+
+function getCurrentModeName(): string {
+  try { return loadConfig().agent.name; } catch { return "build"; }
 }
 
-function todoToggle(state: typeof TODO_INIT, id: number): { state: typeof TODO_INIT; error?: string } {
-  const item = state.items.find((t) => t.id === id);
-  if (!item) return { state, error: `todo #${id} not found` };
-  return { state: { items: state.items.map((t) => (t.id === id ? { ...t, done: !t.done } : t)), nextId: state.nextId } };
-}
-
-function todoClear(): typeof TODO_INIT {
-  return { items: [], nextId: 1 };
-}
-
-function renderTodos(state: typeof TODO_INIT): string {
-  if (state.items.length === 0) return "  (no todos)";
-  const done = state.items.filter((t) => t.done).length;
-  const lines = [`  ${done}/${state.items.length} completed`];
-  for (const t of state.items) {
-    lines.push(`  ${t.done ? "✓" : "○"} #${t.id} ${t.text}`);
+function setModeName(name: string): void {
+  try {
+    const cfg = loadConfig();
+    cfg.agent.name = name;
+    saveConfig(cfg);
+  } catch {
+    // best-effort
   }
-  return lines.join("\n");
+}
+
+function readGit(cwd: string): { branch: string | null; ahead: number; behind: number; porcelain: string } {
+  try { execSync("test -d .git", { cwd, stdio: "ignore" }); } catch { return { branch: null, ahead: 0, behind: 0, porcelain: "" }; }
+  let branch: string | null = null;
+  let ahead = 0;
+  let behind = 0;
+  let porcelain = "";
+  try { branch = execSync("git rev-parse --abbrev-ref HEAD 2>/dev/null", { cwd, encoding: "utf8" }).trim() || null; } catch { branch = null; }
+  try { porcelain = execSync("git status --porcelain 2>/dev/null", { cwd, encoding: "utf8" }); } catch { porcelain = ""; }
+  try {
+    const counts = execSync('git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null || echo "0\t0"', { cwd, encoding: "utf8" }).trim().split(/\s+/);
+    ahead = parseInt(counts[0] ?? "0", 10) || 0;
+    behind = parseInt(counts[1] ?? "0", 10) || 0;
+  } catch { ahead = 0; behind = 0; }
+  return { branch, ahead, behind, porcelain };
 }
 
 function maskKey(k: string): string {
@@ -95,158 +97,125 @@ function getEnvKey(provider: string): string | undefined {
   return process.env[map[provider] ?? `${provider.toUpperCase()}_API_KEY`];
 }
 
-interface GitInfo {
-  branch: string | null;
-  ahead: number;
-  behind: number;
-  porcelain: string;
+function getAuthPath(): string {
+  const xdg = process.env.XDG_CONFIG_HOME;
+  if (xdg) return join(xdg, "pi-pro");
+  return join(process.env.PI_HOME_OVERRIDE ?? homedir(), ".pi", "agent");
 }
 
-function readGit(cwd: string): GitInfo {
-  try {
-    execSync("test -d .git", { cwd, stdio: "ignore" });
-  } catch {
-    return { branch: null, ahead: 0, behind: 0, porcelain: "" };
+function readAuthJson(): Record<string, { type: "api_key"; key: string }> {
+  const p = join(getAuthPath(), "auth.json");
+  if (!existsSync(p)) return {};
+  try { return JSON.parse(readFileSync(p, "utf8")); } catch { return {}; }
+}
+
+function writeAuthJson(data: Record<string, { type: "api_key"; key: string }>): void {
+  const dir = getAuthPath();
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const p = join(dir, "auth.json");
+  writeFileSync(p, JSON.stringify(data, null, 2), { encoding: "utf8", mode: 0o600 });
+  chmodSync(p, 0o600);
+}
+
+function hasAuth(provider: string): { ok: boolean; source: "env" | "auth.json" | "none"; key?: string } {
+  const envKey = getEnvKey(provider);
+  if (envKey) return { ok: true, source: "env", key: envKey };
+  const auth = readAuthJson();
+  if (auth[provider]?.key) return { ok: true, source: "auth.json", key: auth[provider].key };
+  return { ok: false, source: "none" };
+}
+
+function buildStatusLine(version: string, mode: string, nerdFonts: boolean): string {
+  const cwd = process.cwd().split("/").filter(Boolean).pop() ?? "/";
+  const cwdIcon = nerdFonts ? "" : "";
+  const isPlan = mode === "plan";
+  const modeBadge = isPlan ? "PLAN RO" : "BUILD";
+  return `v${version} ${modeBadge} · ${cwdIcon}${cwd}`;
+}
+
+function todoAdd(state: { items: TodoItem[]; nextId: number }, text: string): { state: { items: TodoItem[]; nextId: number }; item?: TodoItem; error?: string } {
+  if (!text.trim()) return { state, error: "text required for add" };
+  const item: TodoItem = { id: state.nextId, text: text.trim(), done: false };
+  return { state: { items: [...state.items, item], nextId: state.nextId + 1 }, item };
+}
+
+function todoToggle(state: { items: TodoItem[]; nextId: number }, id: number): { state: { items: TodoItem[]; nextId: number }; error?: string } {
+  const item = state.items.find((t) => t.id === id);
+  if (!item) return { state, error: `todo #${id} not found` };
+  return { state: { items: state.items.map((t) => (t.id === id ? { ...t, done: !t.done } : t)), nextId: state.nextId } };
+}
+
+function todoClear(): { items: TodoItem[]; nextId: number } {
+  return { items: [], nextId: 1 };
+}
+
+function renderTodos(state: { items: TodoItem[]; nextId: number }): string {
+  if (state.items.length === 0) return "  (no todos)";
+  const done = state.items.filter((t) => t.done).length;
+  const lines = [`  ${done}/${state.items.length} completed`];
+  for (const t of state.items) {
+    lines.push(`  ${t.done ? "v" : "o"} #${t.id} ${t.text}`);
   }
-  let branch: string | null = null;
-  let ahead = 0;
-  let behind = 0;
-  let porcelain = "";
-  try {
-    branch = execSync("git rev-parse --abbrev-ref HEAD 2>/dev/null", { cwd, encoding: "utf8" }).trim() || null;
-  } catch { branch = null; }
-  try {
-    porcelain = execSync("git status --porcelain 2>/dev/null", { cwd, encoding: "utf8" });
-  } catch { porcelain = ""; }
-  try {
-    const counts = execSync(
-      'git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null || echo "0\t0"',
-      { cwd, encoding: "utf8" },
-    ).trim().split(/\s+/);
-    ahead = parseInt(counts[0] ?? "0", 10) || 0;
-    behind = parseInt(counts[1] ?? "0", 10) || 0;
-  } catch { ahead = 0; behind = 0; }
-  return { branch, ahead, behind, porcelain };
+  return lines.join("\n");
+}
+
+function getNerdFonts(): boolean {
+  const term = (process.env.TERM ?? "").toLowerCase();
+  const fontName = (process.env.FONT_NAME ?? "").toLowerCase();
+  const indicators = ["nerd", "nfont", "meslo", "jetbrainsmono nf", "fira code nf", "cascadia code nf"];
+  return indicators.some((i) => term.includes(i) || fontName.includes(i));
 }
 
 export default function (pi: ExtensionAPI): void {
   const todoState: { items: TodoItem[]; nextId: number } = { items: [], nextId: 1 };
   const memState: MemoryState = loadMemoryState();
   let planItems: { step: number; text: string; completed: boolean }[] = [];
+  let lastPlanText = "";
+  let allToolNames: string[] = [];
 
-  function getCurrentModeName(): string {
-    try {
-      return loadConfig().agent.name;
-    } catch {
-      return "build";
-    }
+  function modeOf(): string {
+    return getCurrentModeName();
   }
 
-  function setModeName(name: string): void {
-    try {
-      const cfg = loadConfig();
-      cfg.agent.name = name;
-      saveConfig(cfg);
-    } catch {
-      // best-effort
+  function setModeAndPersist(name: string, ctx: { ui: { setStatus: (k: string, t: string | undefined) => void; setWidget: (k: string, c: string[] | undefined) => void; notify: (m: string, t?: "info" | "warning" | "error") => void } }): void {
+    setModeName(name);
+    applyActiveTools(name);
+    ctx.ui.setStatus(STATUS_KEY, buildStatusLine(VERSION, name, getNerdFonts()));
+    if (name !== "plan") {
+      planItems = [];
+      lastPlanText = "";
+      ctx.ui.setWidget(WIDGET_KEY, undefined);
     }
   }
 
   function applyActiveTools(modeName: string): void {
-    const modes = getDefaultModes();
-    const m = modes.find((x) => x.name === modeName);
-    if (!m) return;
-    if (m.activeTools.length > 0) {
-      pi.setActiveTools(m.activeTools as never);
-    }
-  }
-
-  function rebuildFooter(_ctx: unknown): string {
-    const cwd = process.cwd();
-    const git = readGit(cwd);
-    const runtime = detectRuntime(cwd);
-    const nerdFonts = detectNerdFonts();
-    const summary = summarizeGitStatus(git.porcelain, git.branch, git.ahead, git.behind, nerdFonts);
-    const modeName = getCurrentModeName();
-    const isPlan = modeName === "plan";
-    let cfg;
-    try { cfg = loadConfig(); } catch { cfg = null; }
-    const theme = getTheme(cfg?.theme?.name);
-    const useColor = shouldUseColor(readColorEnv(process.env, cfg));
-    const segs = buildColoredFooter({
-      cwd,
-      branch: git.branch,
-      gitIcons: summary.icons,
-      runtime: runtime ? formatRuntime(runtime).replace(/^via\s+/, "") : null,
-      mode: modeName,
-      modeReadOnly: isPlan,
-      nerdFonts,
-      version: "0.2.2",
-      gitState: summary.state,
-    });
-    return paintMany(
-      segs.map((s) => ({ text: s.text, color: s.color })),
-      theme,
-      useColor,
-    );
-  }
-
-  function useColorFor(_ctx: unknown): boolean {
-    try {
-      const cfg = loadConfig();
-      const env = readColorEnv(process.env, cfg);
-      return shouldUseColor(env);
-    } catch {
-      return false;
+    if (modeName === "plan") {
+      pi.setActiveTools(PLAN_MODE_TOOLS as never);
+    } else {
+      if (allToolNames.length === 0) {
+        try { allToolNames = pi.getAllTools().map((t) => t.name); } catch { allToolNames = []; }
+      }
+      if (allToolNames.length > 0) {
+        pi.setActiveTools(allToolNames as never);
+      }
     }
   }
 
   pi.on("session_start", async (_event, ctx) => {
-    const modeName = getCurrentModeName();
+    const modeName = modeOf();
+    allToolNames = (() => {
+      try { return pi.getAllTools().map((t) => t.name); } catch { return []; }
+    })();
     applyActiveTools(modeName);
-
-    const cwd = process.cwd();
-    const git = readGit(cwd);
-    const runtime = detectRuntime(cwd);
-    const nerdFonts = detectNerdFonts();
-    const summary = summarizeGitStatus(git.porcelain, git.branch, git.ahead, git.behind, nerdFonts);
-    const isPlan = modeName === "plan";
-
-    let cfg;
-    try { cfg = loadConfig(); } catch { cfg = null; }
-    const theme = getTheme(cfg?.theme?.name);
-    const env = readColorEnv(process.env, cfg);
-    const useColor = shouldUseColor(env);
-
-    const segs = buildColoredFooter({
-      cwd,
-      branch: git.branch,
-      gitIcons: summary.icons,
-      runtime: runtime ? formatRuntime(runtime).replace(/^via\s+/, "") : null,
-      mode: modeName,
-      modeReadOnly: isPlan,
-      nerdFonts,
-      version: "0.2.1",
-      gitState: summary.state,
-    });
-    const footer = paintMany(
-      segs.map((s) => ({ text: s.text, color: s.color })),
-      theme,
-      useColor,
-    );
-    try {
-      (ctx.ui as { setStatus?: (k: string, t: string | undefined) => void }).setStatus?.("pi-pro-footer", footer);
-    } catch {
-      // ignore
-    }
+    ctx.ui.setStatus(STATUS_KEY, buildStatusLine(VERSION, modeName, getNerdFonts()));
     if (ctx.hasUI) {
-      const note = `pi-pro v0.2.1 · ${modeName}${isPlan ? " (read-only)" : ""} · ${theme.name}`;
-      ctx.ui.notify(useColor ? paint(note, "accent", theme, true) : note, "info");
+      const note = `pi-pro v${VERSION} · ${modeName}${modeName === "plan" ? " (read-only)" : ""}`;
+      ctx.ui.notify(note, "info");
     }
   });
 
   pi.on("tool_call", async (event) => {
-    const modeName = getCurrentModeName();
+    const modeName = modeOf();
     if (modeName !== "plan") return;
     if (event.toolName === "bash") {
       const input = event.input as { command?: string };
@@ -260,7 +229,7 @@ export default function (pi: ExtensionAPI): void {
   });
 
   pi.on("before_agent_start", async () => {
-    const modeName = getCurrentModeName();
+    const modeName = modeOf();
     if (modeName !== "plan") return;
     return {
       message: {
@@ -280,28 +249,25 @@ export default function (pi: ExtensionAPI): void {
   });
 
   pi.on("agent_end", async (event, ctx) => {
-    if (getCurrentModeName() !== "plan") return;
+    if (modeOf() !== "plan") return;
     const last = [...(event.messages as { role: string; content: unknown }[])].reverse().find((m) => m.role === "assistant");
     if (!last) return;
     const text = typeof last.content === "string" ? last.content : JSON.stringify(last.content);
-    if (planItems.length === 0) {
+    if (text !== lastPlanText) {
+      lastPlanText = text;
       planItems = parsePlanItems(text);
     }
     if (planItems.length > 0) {
       markPlanDone(text, planItems);
       const lines = renderPlanWidget(planItems);
       if (lines.length > 0) {
-        try {
-          (ctx.ui as { setWidget?: (k: string, c: string[] | undefined) => void }).setWidget?.("pi-pro-plan", lines);
-        } catch {
-          // ignore
-        }
+        ctx.ui.setWidget(WIDGET_KEY, lines, { placement: "aboveEditor" } as never);
       }
     }
   });
 
   pi.on("turn_end", async (event, ctx) => {
-    if (getCurrentModeName() !== "plan") return;
+    if (modeOf() !== "plan") return;
     if (planItems.length === 0) return;
     const lastMsg = (event.message ?? null) as { content?: unknown } | null;
     if (!lastMsg) return;
@@ -310,25 +276,33 @@ export default function (pi: ExtensionAPI): void {
       : JSON.stringify(lastMsg.content ?? "");
     markPlanDone(text, planItems);
     const lines = renderPlanWidget(planItems);
-    try {
-      (ctx.ui as { setWidget?: (k: string, c: string[] | undefined) => void }).setWidget?.("pi-pro-plan", lines);
-    } catch {
-      // ignore
+    if (lines.length > 0) {
+      ctx.ui.setWidget(WIDGET_KEY, lines, { placement: "aboveEditor" } as never);
     }
   });
 
   pi.on("session_shutdown", async () => {
     planItems = [];
+    lastPlanText = "";
   });
 
-  pi.registerCommand("mode", {
+  function registerAlias(name: string, opts: { description: string; handler: (args: string | undefined, ctx: any) => Promise<any> | any }): void {
+    pi.registerCommand(name, opts);
+  }
+
+  function registerWithColon(name: string, opts: { description: string; handler: (args: string | undefined, ctx: any) => Promise<any> | any }): void {
+    registerAlias(name, opts);
+    registerAlias(`:${name}`, opts);
+  }
+
+  registerWithColon("mode", {
     description: "Show/cycle/set agent mode (build | plan). Tab in editor to cycle.",
     handler: async (args, ctx) => {
       const arg = args?.trim();
       if (!arg) {
         const cfg = loadConfig();
         for (const m of getDefaultModes()) {
-          const marker = m.name === cfg.agent.name ? "→" : " ";
+          const marker = m.name === cfg.agent.name ? ">" : " ";
           ctx.ui.notify(`${marker} ${m.name}  ${m.label}${m.readOnly ? " (read-only)" : ""}`, "info");
         }
         return;
@@ -338,38 +312,36 @@ export default function (pi: ExtensionAPI): void {
         ctx.ui.notify(`unknown mode: ${arg} (available: build, plan)`, "error");
         return;
       }
-      setModeName(target.name);
-      applyActiveTools(target.name);
+      setModeAndPersist(target.name, ctx);
       ctx.ui.notify(`mode: ${target.name} (${target.label})${target.readOnly ? " — read-only" : ""}`, "info");
     },
   });
 
-  pi.registerCommand("plan", {
-    description: "Toggle plan mode (read-only). Cycles build ↔ plan.",
+  registerWithColon("plan", {
+    description: "Toggle plan mode (read-only). Cycles build <-> plan.",
     handler: async (_args, ctx) => {
-      const current = getCurrentModeName();
+      const current = modeOf();
       const target = current === "plan" ? "build" : "plan";
-      setModeName(target);
-      applyActiveTools(target);
+      setModeAndPersist(target, ctx);
       ctx.ui.notify(`plan mode: ${target === "plan" ? "ON (read-only)" : "OFF (build)"}`, "info");
     },
   });
 
-  pi.registerCommand("todos", {
+  registerWithColon("todos", {
     description: "Show current todo list",
     handler: async (_args, ctx) => {
       ctx.ui.notify(renderTodos(todoState), "info");
     },
   });
 
-  pi.registerCommand("config", {
+  registerWithColon("config", {
     description: "Show pi-pro config",
     handler: async (_args, ctx) => {
       try {
         const cfg = loadConfig();
         const lines = [
-          `pi-pro config · v0.2.0`,
-          `─`.repeat(40),
+          `pi-pro config · v${VERSION}`,
+          `-`.repeat(40),
           `  provider:  ${cfg.provider.name}`,
           `  model:     ${cfg.provider.model}`,
           cfg.provider.baseUrl ? `  baseUrl:   ${cfg.provider.baseUrl}` : "",
@@ -385,30 +357,27 @@ export default function (pi: ExtensionAPI): void {
     },
   });
 
-  pi.registerCommand("doctor", {
+  registerWithColon("doctor", {
     description: "Check system + pi-pro config",
     handler: async (_args, ctx) => {
-      const lines = ["pi-pro doctor", "─".repeat(40)];
+      const lines = [`pi-pro doctor v${VERSION}`, `-`.repeat(40)];
       try {
         const cfg = loadConfig();
-        const key = getEnvKey(cfg.provider.name);
-        const theme = getTheme(cfg.theme?.name);
-        const env = readColorEnv(process.env, cfg);
-        const useColor = shouldUseColor(env);
+        const auth = hasAuth(cfg.provider.name);
         lines.push(`  provider:  ${cfg.provider.name}`);
         lines.push(`  model:     ${cfg.provider.model}`);
-        lines.push(`  api key:   ${key ? `✓ ${maskKey(key)}` : "✗ (no key in env)"}`);
+        lines.push(`  api key:   ${auth.ok ? `v ${maskKey(auth.key!)} (${auth.source})` : "X (no key in env or auth.json)"}`);
         lines.push(`  mode:      ${cfg.agent.name}${cfg.agent.name === "plan" ? " (read-only)" : ""}`);
-        lines.push(`  theme:     ${theme.name} (${theme.label})`);
-        lines.push(`  color:     ${useColor ? "✓ on" : "✗ off"} ${env.noColor ? "(NO_COLOR)" : env.termDumb ? "(TERM=dumb)" : env.copyFriendly ? "(copyFriendly)" : ""}`);
         lines.push(`  cwd:       ${process.cwd()}`);
         const git = readGit(process.cwd());
         if (git.branch) {
-          const summary = summarizeGitStatus(git.porcelain, git.branch, git.ahead, git.behind, detectNerdFonts());
+          const summary = summarizeGitStatus(git.porcelain, git.branch, git.ahead, git.behind, getNerdFonts());
           lines.push(`  git:       ${git.branch} ${summary.icons}`);
         }
         const runtime = detectRuntime(process.cwd());
         if (runtime) lines.push(`  runtime:   ${formatRuntime(runtime)}`);
+        const allTools = (() => { try { return pi.getAllTools().length; } catch { return 0; } })();
+        lines.push(`  tools:     ${allTools} available`);
       } catch (e) {
         lines.push(`  error: ${(e as Error).message}`);
       }
@@ -416,36 +385,46 @@ export default function (pi: ExtensionAPI): void {
     },
   });
 
-  pi.registerCommand("theme", {
-    description: "Show / set theme (default, vivid, monokai, noir)",
-    handler: async (args, ctx) => {
-      const arg = args?.trim();
-      if (!arg) {
-        const cfg = loadConfig();
-        const current = getTheme(cfg.theme?.name);
-        for (const t of listThemes()) {
-          const marker = t.name === current.name ? "→" : " ";
-          const note = useColorFor(ctx)
-            ? paint(`${marker} ${t.name}`, t.name === current.name ? "success" : "muted", t, true)
-            : `${marker} ${t.name}`;
-          ctx.ui.notify(`${note}  ${t.label} — ${t.description}`, "info");
-        }
-        return;
-      }
-      const target = listThemes().find((t) => t.name === arg);
-      if (!target) {
-        const names = listThemes().map((t) => t.name).join(", ");
-        ctx.ui.notify(`unknown theme: ${arg} (available: ${names})`, "error");
-        return;
-      }
-      const cfg = loadConfig();
-      cfg.theme = { name: target.name };
-      saveConfig(cfg);
-      ctx.ui.notify(`theme: → ${target.name} (${target.label})`, "info");
+  registerWithColon("theme", {
+    description: "Open pi-zentui's /zentui config (pi-zentui must be installed)",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify("pi-zentui owns the theme. Use /zentui to configure.", "info");
     },
   });
 
-  type TodoDetails = { items: TodoItem[]; nextId: number; action?: "list" | "add" | "toggle" | "clear"; error?: string; addedId?: number };
+  registerWithColon("login", {
+    description: "Set API key for a provider. Writes to ~/.pi/agent/auth.json (0600). Usage: :login <provider> [key]",
+    handler: async (args, ctx) => {
+      const parts = (args ?? "").trim().split(/\s+/);
+      const provider = parts[0];
+      let key = parts.slice(1).join(" ");
+      if (!provider) {
+        ctx.ui.notify("usage: :login <provider> [key]  (provider examples: opencode-go, anthropic, openai)", "error");
+        return;
+      }
+      if (!key) {
+        try {
+          const got = await ctx.ui.input(`Enter API key for ${provider}:`, "");
+          if (!got) {
+            ctx.ui.notify("login cancelled (no key)", "info");
+            return;
+          }
+          key = got.trim();
+        } catch {
+          ctx.ui.notify("login cancelled (no input available)", "info");
+          return;
+        }
+      }
+      try {
+        const auth = readAuthJson();
+        auth[provider] = { type: "api_key", key };
+        writeAuthJson(auth);
+        ctx.ui.notify(`v saved ${provider} key to auth.json (masked: ${maskKey(key)})`, "info");
+      } catch (e) {
+        ctx.ui.notify(`login failed: ${(e as Error).message}`, "error");
+      }
+    },
+  });
 
   pi.registerTool({
     name: "todo",
@@ -519,99 +498,87 @@ export default function (pi: ExtensionAPI): void {
     },
   });
 
-  pi.registerCommand("memory-add", {
+  registerWithColon("memory-add", {
     description: "Add a chunk to cross-session memory",
     handler: async (args, ctx) => {
       const text = args?.trim();
-      if (!text) {
-        ctx.ui.notify("usage: /memory-add <text>", "error");
-        return;
-      }
+      if (!text) { ctx.ui.notify("usage: :memory-add <text>", "error"); return; }
       const r = addMemory(memState, text, "narrative");
       Object.assign(memState, r.state);
-      ctx.ui.notify(`✓ added #${r.entry.ts} (${memState.entries.length} total)`, "info");
+      ctx.ui.notify(`v added #${r.entry.ts} (${memState.entries.length} total)`, "info");
     },
   });
 
-  pi.registerCommand("memory-list", {
+  registerWithColon("memory-list", {
     description: "List memory entries (newest first)",
     handler: async (_args, ctx) => {
       const entries = listMemory(memState);
-      if (entries.length === 0) {
-        ctx.ui.notify("(no memory entries)", "info");
-        return;
-      }
+      if (entries.length === 0) { ctx.ui.notify("(no memory entries)", "info"); return; }
       const lines = entries.slice(0, 20).map((e) => `  #${e.ts} [${e.role}] ${e.text.slice(0, 80)}`);
       if (entries.length > 20) lines.push(`  ... and ${entries.length - 20} more`);
       ctx.ui.notify(lines.join("\n"), "info");
     },
   });
 
-  pi.registerCommand("memory-search", {
+  registerWithColon("memory-search", {
     description: "Search memory entries",
     handler: async (args, ctx) => {
       const q = args?.trim();
-      if (!q) {
-        ctx.ui.notify("usage: /memory-search <query>", "error");
-        return;
-      }
+      if (!q) { ctx.ui.notify("usage: :memory-search <query>", "error"); return; }
       const results = searchMemory(memState, q, 5);
-      if (results.length === 0) {
-        ctx.ui.notify(`no matches for: ${q}`, "info");
-        return;
-      }
+      if (results.length === 0) { ctx.ui.notify(`no matches for: ${q}`, "info"); return; }
       const lines = results.map((e) => `  #${e.ts} [${e.role}] ${e.text.slice(0, 100)}`);
       ctx.ui.notify(lines.join("\n"), "info");
     },
   });
 
-  pi.registerCommand("memory-clear", {
+  registerWithColon("memory-clear", {
     description: "Clear all memory entries",
     handler: async (_args, ctx) => {
       const n = memState.entries.length;
       const fresh = clearMemory(memState);
       Object.assign(memState, fresh);
-      ctx.ui.notify(`✓ cleared ${n} entries`, "info");
+      ctx.ui.notify(`v cleared ${n} entries`, "info");
     },
   });
 
-  pi.registerCommand("btw", {
+  registerWithColon("btw", {
     description: "Side question (queues a message to the agent without polluting main history)",
     handler: async (args, ctx) => {
       const q = args?.trim();
-      if (!q) {
-        ctx.ui.notify("usage: /btw <question>", "error");
-        return;
-      }
+      if (!q) { ctx.ui.notify("usage: :btw <question>", "error"); return; }
       pi.sendUserMessage(`[side question, no edit] ${q}`);
       ctx.ui.notify(`queued btw: ${q.slice(0, 80)}`, "info");
     },
   });
 
-  pi.registerCommand("context", {
+  registerWithColon("context", {
     description: "Show context budget breakdown",
     handler: async (_args, ctx) => {
-      const usage = (ctx as { getContextUsage?: () => { tokens: number; contextWindow: number; percent: number } | null }).getContextUsage?.();
+      const usage = (ctx as { getContextUsage?: () => { tokens: number | null; contextWindow: number; percent: number | null } | null | undefined }).getContextUsage?.();
       if (!usage) {
         ctx.ui.notify("(context usage not available)", "info");
         return;
       }
+      if (usage.tokens == null || usage.contextWindow == null || usage.percent == null) {
+        ctx.ui.notify("ctx: (compacting or no model context window)", "info");
+        return;
+      }
       const fmt = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n));
-      const color = usage.percent < 0.75 ? "✓" : usage.percent < 0.9 ? "!" : "!!";
+      const color = usage.percent < 0.75 ? "ok" : usage.percent < 0.9 ? "warn" : "high";
       ctx.ui.notify(`ctx: ${fmt(usage.tokens)}/${fmt(usage.contextWindow)} (${Math.round(usage.percent * 100)}%) ${color}`, "info");
     },
   });
 
   pi.registerShortcut("tab", {
-    description: "Cycle agent mode (build ↔ plan). Overrides built-in Tab.",
-    handler: async (_ctx) => {
-      const current = getCurrentModeName();
+    description: "Cycle agent mode (build <-> plan). Overrides built-in Tab.",
+    handler: async (ctx) => {
+      const current = modeOf();
       const next = cycleModeCfg(current, getDefaultModes());
-      setModeName(next);
-      applyActiveTools(next);
-      _ctx.ui.notify(`mode: ${current} → ${next}`, "info");
+      setModeAndPersist(next, ctx);
+      ctx.ui.notify(`mode: ${current} -> ${next}`, "info");
     },
   });
-
-  void useColorFor;
 }
+
+type TodoDetails = { items: TodoItem[]; nextId: number; action?: "list" | "add" | "toggle" | "clear"; error?: string; addedId?: number };
