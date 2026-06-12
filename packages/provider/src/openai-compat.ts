@@ -7,6 +7,13 @@ interface OpenAIRequest {
   temperature?: number;
   tools?: Array<{ type: "function"; function: { name: string; description: string; parameters: Record<string, unknown> } }>;
   stream: true;
+  prompt_cache_key?: string;
+}
+
+interface OpenAIUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  prompt_tokens_details?: { cached_tokens?: number };
 }
 
 class OpenAICompatProvider implements Provider {
@@ -51,6 +58,9 @@ class OpenAICompatProvider implements Provider {
         function: { name: t.name, description: t.description, parameters: t.input_schema },
       }));
     }
+    if (opts.cacheHints?.cacheKey) {
+      body.prompt_cache_key = opts.cacheHints.cacheKey;
+    }
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (this.apiKey) headers["Authorization"] = `Bearer ${this.apiKey}`;
@@ -70,10 +80,18 @@ class OpenAICompatProvider implements Provider {
     if (!ct.includes("text/event-stream") && res.body) {
       const raw = await res.text();
       if (raw && !raw.startsWith("data:") && raw.startsWith("{")) {
-        const parsed = JSON.parse(raw) as { choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+        const parsed = JSON.parse(raw) as { choices?: Array<{ message?: { content?: string } }>; usage?: OpenAIUsage };
         const text = (parsed.choices ?? []).map(c => c.message?.content ?? "").join("");
         if (text) yield { type: "token", text };
-        yield { type: "done", usage: { in: parsed.usage?.prompt_tokens ?? 0, out: parsed.usage?.completion_tokens ?? 0 } };
+        const usage = parsed.usage ?? {};
+        yield {
+          type: "done",
+          usage: {
+            in: usage.prompt_tokens ?? 0,
+            out: usage.completion_tokens ?? 0,
+            cacheReadTokens: usage.prompt_tokens_details?.cached_tokens,
+          },
+        };
         return;
       }
       if (raw && !raw.startsWith("data:")) {
@@ -88,6 +106,7 @@ class OpenAICompatProvider implements Provider {
 
     let inTokens = 0;
     let outTokens = 0;
+    let cacheRead = 0;
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -158,12 +177,20 @@ class OpenAICompatProvider implements Provider {
           if (parsed.usage) {
             inTokens = parsed.usage.prompt_tokens ?? inTokens;
             outTokens = parsed.usage.completion_tokens ?? outTokens;
+            cacheRead = parsed.usage.prompt_tokens_details?.cached_tokens ?? cacheRead;
           }
         } catch { /* ignore */ }
       }
     }
 
-    yield { type: "done", usage: { in: inTokens, out: outTokens } };
+    yield {
+      type: "done",
+      usage: {
+        in: inTokens,
+        out: outTokens,
+        cacheReadTokens: cacheRead || undefined,
+      },
+    };
   }
 }
 

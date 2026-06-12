@@ -3,11 +3,18 @@ import { Provider, Message, CallOpts, StreamChunk, Tool, ProviderConfig } from "
 interface AnthropicRequest {
   model: string;
   max_tokens: number;
-  system?: string;
+  system?: string | Array<{ type: "text"; text: string; cache_control?: { type: "ephemeral" } }>;
   messages: Array<{ role: "user" | "assistant"; content: string | Array<Record<string, unknown>> }>;
-  tools?: Array<{ name: string; description: string; input_schema: Record<string, unknown> }>;
+  tools?: Array<{ name: string; description: string; input_schema: Record<string, unknown>; cache_control?: { type: "ephemeral" } }>;
   temperature?: number;
   stream?: boolean;
+}
+
+interface AnthropicUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
 }
 
 export class OpenCodeGoProvider implements Provider {
@@ -37,14 +44,31 @@ export class OpenCodeGoProvider implements Provider {
       }
     }
 
+    const cacheSystem = opts.cacheHints?.cacheSystem === true;
+    const cacheTools = opts.cacheHints?.cacheTools === true;
+
     const body: AnthropicRequest = {
       model: opts.model ?? this.defaultModel,
       max_tokens: opts.maxTokens ?? 4096,
       messages: chatMessages,
     };
-    if (systemParts.length > 0) body.system = systemParts.join("\n\n");
+    if (systemParts.length > 0) {
+      if (cacheSystem) {
+        body.system = [{
+          type: "text",
+          text: systemParts.join("\n\n"),
+          cache_control: { type: "ephemeral" },
+        }];
+      } else {
+        body.system = systemParts.join("\n\n");
+      }
+    }
     if (opts.tools && opts.tools.length > 0) {
       body.tools = opts.tools.map((t: Tool) => ({ name: t.name, description: t.description, input_schema: t.input_schema }));
+      if (cacheTools) {
+        const last = body.tools[body.tools.length - 1];
+        last.cache_control = { type: "ephemeral" };
+      }
     }
     if (opts.temperature !== undefined) body.temperature = opts.temperature;
     body.stream = true;
@@ -74,10 +98,19 @@ export class OpenCodeGoProvider implements Provider {
     if (!ct.includes("text/event-stream") && res.body) {
       const raw = await res.text();
       if (raw && !raw.startsWith("data:") && raw.startsWith("{")) {
-        const parsed = JSON.parse(raw) as { content?: Array<{ type: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } };
+        const parsed = JSON.parse(raw) as { content?: Array<{ type: string; text?: string }>; usage?: AnthropicUsage };
         const text = (parsed.content ?? []).filter(b => b.type === "text").map(b => b.text ?? "").join("");
         if (text) yield { type: "token", text };
-        yield { type: "done", usage: { in: parsed.usage?.input_tokens ?? 0, out: parsed.usage?.output_tokens ?? 0 } };
+        const usage = parsed.usage ?? {};
+        yield {
+          type: "done",
+          usage: {
+            in: usage.input_tokens ?? 0,
+            out: usage.output_tokens ?? 0,
+            cacheReadTokens: usage.cache_read_input_tokens,
+            cacheWriteTokens: usage.cache_creation_input_tokens,
+          },
+        };
         return;
       }
       if (raw && !raw.startsWith("data:")) {
@@ -92,6 +125,8 @@ export class OpenCodeGoProvider implements Provider {
 
     let inTokens = 0;
     let outTokens = 0;
+    let cacheRead = 0;
+    let cacheWrite = 0;
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -115,6 +150,8 @@ export class OpenCodeGoProvider implements Provider {
           const parsed = JSON.parse(data);
           if (parsed.type === "message_start" && parsed.message?.usage) {
             inTokens = parsed.message.usage.input_tokens ?? 0;
+            cacheRead = parsed.message.usage.cache_read_input_tokens ?? 0;
+            cacheWrite = parsed.message.usage.cache_creation_input_tokens ?? 0;
           } else if (parsed.type === "message_delta" && parsed.usage) {
             outTokens = parsed.usage.output_tokens ?? 0;
           } else if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
@@ -158,6 +195,14 @@ export class OpenCodeGoProvider implements Provider {
       }
     }
 
-    yield { type: "done", usage: { in: inTokens, out: outTokens } };
+    yield {
+      type: "done",
+      usage: {
+        in: inTokens,
+        out: outTokens,
+        cacheReadTokens: cacheRead || undefined,
+        cacheWriteTokens: cacheWrite || undefined,
+      },
+    };
   }
 }

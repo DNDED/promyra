@@ -4,15 +4,43 @@ import { promptFor, StubWorker } from "./worker.js";
 import { LlmWorker, ToolInstance } from "./llm-worker.js";
 import {
   createBashTool, createEditTool, createGlobTool, createGrepTool, createReadTool, createWebfetchTool, createWriteTool,
-} from "@pi/tools";
-import type { Provider } from "@pi/provider";
+} from "@promyra/tools";
+import type { Provider } from "@promyra/provider";
+import { Optimizer, type OptimizerFlags } from "@promyra/optimizer";
+import { ToolResultCache } from "@promyra/cache";
 
 const RETRY_LIMIT = 2;
+
+/** Default flag values when no env vars are set. */
+const DEFAULT_FLAGS: Required<OptimizerFlags> = {
+  cache: true,
+  repoMap: true,
+  cascade: true,
+  parallelTools: true,
+  telemetry: true,
+};
+
+function envFlag(name: string, defaultValue: boolean): boolean {
+  const v = process.env[name];
+  if (v === undefined) return defaultValue;
+  const s = v.toLowerCase().trim();
+  return !(s === "0" || s === "false" || s === "no" || s === "off");
+}
+
+function readFlagsFromEnv(): Required<OptimizerFlags> {
+  return {
+    cache: envFlag("PROMYRA_CACHE", DEFAULT_FLAGS.cache),
+    repoMap: envFlag("PROMYRA_REPO_MAP", DEFAULT_FLAGS.repoMap),
+    cascade: envFlag("PROMYRA_CASCADE", DEFAULT_FLAGS.cascade),
+    parallelTools: envFlag("PROMYRA_PARALLEL_TOOLS", DEFAULT_FLAGS.parallelTools),
+    telemetry: envFlag("PROMYRA_TELEMETRY", DEFAULT_FLAGS.telemetry),
+  };
+}
 
 export class SubagentRouter {
   constructor(private readonly worker: Worker = new StubWorker()) {}
 
-  static withProvider(provider: Provider, workdir: string): SubagentRouter {
+  static withProvider(provider: Provider, workdir: string, model?: string, flags?: OptimizerFlags): SubagentRouter {
     const allTools: ToolInstance[] = [
       createBashTool({ cwd: workdir }) as unknown as ToolInstance,
       createReadTool({ cwd: workdir }) as unknown as ToolInstance,
@@ -22,7 +50,23 @@ export class SubagentRouter {
       createGlobTool({ cwd: workdir }) as unknown as ToolInstance,
       createWebfetchTool() as unknown as ToolInstance,
     ];
-    const llm = new LlmWorker(provider, allTools, workdir);
+    // v0.5.0: wire Optimizer + ToolResultCache into the worker. The
+    // worker wraps every LLM call with the optimizer (cache hints, cost
+    // tracking) and memoizes tool results in a session-scoped LRU.
+    // Flags default from PROMYRA_* env vars, fall back to caller-supplied.
+    const effectiveFlags = flags ?? readFlagsFromEnv();
+    const optimizer = effectiveFlags.cache || effectiveFlags.cascade || effectiveFlags.telemetry
+      ? new Optimizer()
+      : undefined;
+    const toolCache = effectiveFlags.cache
+      ? new ToolResultCache()
+      : undefined;
+    const llm = new LlmWorker(provider, allTools, workdir, {
+      model: model ?? "minimax-m3",
+      optimizer,
+      toolCache,
+      parallelTools: effectiveFlags.parallelTools,
+    });
     return new SubagentRouter(llm);
   }
 

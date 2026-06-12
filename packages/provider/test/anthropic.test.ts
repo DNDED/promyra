@@ -65,3 +65,98 @@ describe("AnthropicProvider", () => {
     expect(usage).toEqual({ in: 10, out: 5 });
   });
 });
+
+describe("v0.5.0 AnthropicProvider cache + cost", () => {
+  let server: ReturnType<typeof createServer>;
+  let baseUrl: string;
+  let lastBody = "";
+
+  beforeEach(async () => {
+    server = createServer((req: IncomingMessage, res: ServerResponse) => {
+      let body = "";
+      req.on("data", c => { body += c; });
+      req.on("end", () => {
+        lastBody = body;
+        res.writeHead(200, { "Content-Type": "text/event-stream" });
+        res.end(`data: {"type":"message_start","message":{"usage":{"input_tokens":12,"cache_creation_input_tokens":100,"cache_read_input_tokens":80}}}\n\ndata: {"type":"message_delta","usage":{"output_tokens":7}}\n\ndata: [DONE]\n\n`);
+      });
+    });
+    await new Promise<void>(r => server.listen(0, r));
+    baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(r => server.close(() => r()));
+  });
+
+  it("emits cache_control: ephemeral on system when cacheSystem hint set", async () => {
+    const p = new AnthropicProvider({ apiKey: "test", model: "x", baseUrl });
+    for await (const _ of p.complete(
+      [
+        { role: "system", content: "You are a coding assistant." },
+        { role: "user", content: "hi" },
+      ],
+      { model: "x", cacheHints: { cacheSystem: true } },
+    )) { /* drain */ }
+    const parsed = JSON.parse(lastBody);
+    expect(Array.isArray(parsed.system)).toBe(true);
+    expect(parsed.system[0].cache_control).toEqual({ type: "ephemeral" });
+    expect(parsed.system[0].text).toContain("coding assistant");
+  });
+
+  it("keeps system as a plain string when cacheSystem hint not set", async () => {
+    const p = new AnthropicProvider({ apiKey: "test", model: "x", baseUrl });
+    for await (const _ of p.complete(
+      [
+        { role: "system", content: "hello" },
+        { role: "user", content: "hi" },
+      ],
+      { model: "x" },
+    )) { /* drain */ }
+    const parsed = JSON.parse(lastBody);
+    expect(typeof parsed.system).toBe("string");
+    expect(parsed.system).toBe("hello");
+  });
+
+  it("emits cache_control: ephemeral on last tool when cacheTools hint set", async () => {
+    const p = new AnthropicProvider({ apiKey: "test", model: "x", baseUrl });
+    const tools = [
+      { name: "read", description: "read", input_schema: { type: "object" } },
+      { name: "edit", description: "edit", input_schema: { type: "object" } },
+    ];
+    for await (const _ of p.complete(
+      [{ role: "user", content: "hi" }],
+      { model: "x", tools, cacheHints: { cacheTools: true } },
+    )) { /* drain */ }
+    const parsed = JSON.parse(lastBody);
+    expect(parsed.tools).toHaveLength(2);
+    expect(parsed.tools[0].cache_control).toBeUndefined();
+    expect(parsed.tools[1].cache_control).toEqual({ type: "ephemeral" });
+  });
+
+  it("no tool cache_control when cacheTools hint not set", async () => {
+    const p = new AnthropicProvider({ apiKey: "test", model: "x", baseUrl });
+    const tools = [{ name: "read", description: "read", input_schema: { type: "object" } }];
+    for await (const _ of p.complete(
+      [{ role: "user", content: "hi" }],
+      { model: "x", tools },
+    )) { /* drain */ }
+    const parsed = JSON.parse(lastBody);
+    expect(parsed.tools[0].cache_control).toBeUndefined();
+  });
+
+  it("reads cache_creation_input_tokens and cache_read_input_tokens from SSE", async () => {
+    const p = new AnthropicProvider({ apiKey: "test", model: "x", baseUrl });
+    let usage: { in: number; out: number; cacheReadTokens?: number; cacheWriteTokens?: number } | null = null;
+    for await (const chunk of p.complete(
+      [{ role: "user", content: "x" }],
+      { model: "x", cacheHints: { cacheSystem: true } },
+    )) {
+      if (chunk.type === "done") usage = chunk.usage;
+    }
+    expect(usage?.in).toBe(12);
+    expect(usage?.out).toBe(7);
+    expect(usage?.cacheWriteTokens).toBe(100);
+    expect(usage?.cacheReadTokens).toBe(80);
+  });
+});
