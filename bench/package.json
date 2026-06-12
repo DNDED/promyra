@@ -1,5 +1,5 @@
 {
-  "name": "@promyra/bench",
+  "name": "@pi/bench",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,12 +14,12 @@
     "bench": "tsx src/runner.ts"
   },
   "dependencies": {
-    "@promyra/cache": "workspace:*",
-    "@promyra/optimizer": "workspace:*",
-    "@promyra/provider": "workspace:*",
-    "@promyra/repo-map": "workspace:*",
-    "@promyra/subagent": "workspace:*",
-    "@promyra/tools": "workspace:*"
+    "@pi/cache": "workspace:*",
+    "@pi/optimizer": "workspace:*",
+    "@pi/provider": "workspace:*",
+    "@pi/repo-map": "workspace:*",
+    "@pi/subagent": "workspace:*",
+    "@pi/tools": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

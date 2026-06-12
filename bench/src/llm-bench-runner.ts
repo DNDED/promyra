@@ -1,15 +1,15 @@
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, copyFileSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { Provider } from "@promyra/provider";
-import { LlmWorker, PipelineWorker, Role } from "@promyra/subagent";
-import { createBashTool, createEditTool, createGlobTool, createGrepTool, createReadTool, createWebfetchTool, createWriteTool } from "@promyra/tools";
-import { Optimizer } from "@promyra/optimizer";
-import { ToolResultCache } from "@promyra/cache";
-import { getRepoMap } from "@promyra/repo-map";
+import { Provider } from "@pi/provider";
+import { LlmWorker, PipelineWorker, Role } from "@pi/subagent";
+import { createBashTool, createEditTool, createGlobTool, createGrepTool, createReadTool, createWebfetchTool, createWriteTool } from "@pi/tools";
+import { Optimizer } from "@pi/optimizer";
+import { ToolResultCache } from "@pi/cache";
+import { getRepoMap } from "@pi/repo-map";
 import { TASKS, BenchTask } from "../tasks/index.js";
 import { fixtureContextFor } from "./fixture-context.js";
-import type { OptimizerFlags } from "@promyra/optimizer";
+import type { OptimizerFlags } from "@pi/optimizer";
 
 export interface BenchResult {
   taskId: string;
@@ -240,7 +240,7 @@ export class LlmBenchRunner {
       const taskModel = (modelMap[(task.difficulty ?? "medium")] ?? this.opts.model ?? "minimax-m3").replace(/^opencode-go\//, "");
 
       try {
-        let result: import("@promyra/subagent").SubagentResult;
+        let result: import("@pi/subagent").SubagentResult;
         if (this.opts.usePipeline) {
           const pw = PipelineWorker.default(this.provider, toolInstances, fixtureCopy, this.opts.modelMap);
           result = await pw.run({

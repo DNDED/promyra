@@ -9,12 +9,12 @@ These are the **HARD GATEs** (fail-closed) for working in the pi-pro repo. They 
 Before the first response, read these 5 files in order:
 
 1. `memory/user.md` — Sid's preferences, comm style, UI taste, anti-patterns.
-2. `memory/projects/promyra.md` — project state, releases, architecture, files of interest.
+2. `memory/projects/pi-pro.md` — project state, releases, architecture, files of interest.
 3. `memory/decisions/v0.6.0.md` — last release decisions (and `v0.5.0.md` for older).
 4. `memory/daily/2026-06-11.md` — today's narrative so far (or the most recent daily).
 5. `memory/sessions/index.md` — last 3 OpenCode sessions (skim the latest detail files).
 
-If a project name is mentioned or a path is rooted in a known project (e.g. `packages/swarm/`), read `memory/projects/promyra.md` first.
+If a project name is mentioned or a path is rooted in a known project (e.g. `packages/swarm/`), read `memory/projects/pi-pro.md` first.
 
 ---
 
@@ -25,7 +25,7 @@ Do NOT wait for Sid to ask. Write durable facts as they happen:
 - **Durable fact learned** (preference, project state, decision, reusable lesson) → write to canonical location immediately.
   - User/preference → `memory/user.md`
   - OpenCode behavior/setup → `memory/AGENTS-rules.md` (this file)
-  - Project knowledge → `memory/projects/promyra.md` (and update `memory/sessions/index.md` if new)
+  - Project knowledge → `memory/projects/pi-pro.md` (and update `memory/sessions/index.md` if new)
   - Decision that constrains future work → `memory/decisions/v0.X.md`
   - Narrative or one-off → `memory/daily/YYYY-MM-DD.md`
 - **One source of truth.** Don't write the same fact in two places. Wikilink from the second location to the first.
@@ -37,7 +37,7 @@ Do NOT wait for Sid to ask. Write durable facts as they happen:
 
 Walk the 5-step gate:
 
-1. Did I touch the project? → update `memory/projects/promyra.md` if state changed.
+1. Did I touch the project? → update `memory/projects/pi-pro.md` if state changed.
 2. Did I make a decision that constrains future work? → append to `memory/decisions/v0.X.md`.
 3. Did I learn a preference about Sid? → append to `memory/user.md`.
 4. Did anything happen today? → ensure `memory/daily/YYYY-MM-DD.md` has the entry.
@@ -49,7 +49,7 @@ Skip steps without reason. Do not skip with reason.
 
 ## 4. Project Auto-Detection
 
-When the working directory or file paths reference `/home/trader/Developer/pi-pro`, auto-load `memory/projects/promyra.md` BEFORE any code changes. Do not start editing, do not propose architecture, do not even read project files until the project note is loaded.
+When the working directory or file paths reference `/home/trader/Developer/pi-pro`, auto-load `memory/projects/pi-pro.md` BEFORE any code changes. Do not start editing, do not propose architecture, do not even read project files until the project note is loaded.
 
 ---
 
@@ -98,8 +98,8 @@ Per `~/.config/opencode/AGENTS.md`:
 | Rule | Global | In-repo (this file) |
 |---|---|---|
 | Memory location | `/home/trader/Documents/Obsidian Vault/` (Obsidian) | `memory/` (in pi-pro) |
-| Projects | All (leadops, argent, etc.) | promyra only |
-| Project note | `Projects/<name>.md` | `memory/projects/promyra.md` |
+| Projects | All (leadops, argent, etc.) | pi-pro only |
+| Project note | `Projects/<name>.md` | `memory/projects/pi-pro.md` |
 | Daily log | `Daily/YYYY-MM-DD.md` | `memory/daily/YYYY-MM-DD.md` |
 | Sessions | `Sessions/OpenCode/` | `memory/sessions/` |
 | Decisions | `Memory/Decision Log.md` | `memory/decisions/v0.X.md` |

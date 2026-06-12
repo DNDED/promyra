@@ -6,7 +6,7 @@ import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { runTask, listFixtures, testCommandFor } from "../src/runner.js";
 import { LlmBenchRunner, installHintFor } from "../src/llm-bench-runner.js";
-import { Provider, Message, StreamChunk, CallOpts } from "@promyra/provider";
+import { Provider, Message, StreamChunk, CallOpts } from "@pi/provider";
 import { BenchTask } from "../tasks/index.js";
 
 class ScriptedProvider implements Provider {

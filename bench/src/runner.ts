@@ -82,7 +82,7 @@ export function runTask(task: BenchTask, worktreePath: string, fixtureCopyPath: 
 }
 
 export async function main(): Promise<void> {
-  console.log(`\npromyra bench: ${TASKS.length} tasks\n`);
+  console.log(`\npi-pro bench: ${TASKS.length} tasks\n`);
   const results: BenchRunResult[] = [];
   for (const task of TASKS) {
     console.log(`--- ${task.id} (${task.fixture}) ---`);
@@ -102,7 +102,7 @@ export async function main(): Promise<void> {
   console.log(`\nBaseline eval: ${completed}/${results.length} one-shot (${rate.toFixed(0)}%), ${skipped} skipped\n`);
   console.log("NOTE: this is the BASELINE runner — it just runs each fixture's");
   console.log("test command without any LLM. For the real eval, use");
-  console.log("'promyra bench' which spawns an LLM worker per task.");
+  console.log("'pi-pro bench' which spawns an LLM worker per task.");
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

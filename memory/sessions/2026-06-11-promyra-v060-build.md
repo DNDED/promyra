@@ -1,15 +1,15 @@
-# 2026-06-11 ~00:30 — promyra v0.6.0 build (initial)
+# 2026-06-11 ~00:30 — pi-pro v0.6.0 build (initial)
 
 **Trigger:** Sid: "ok continue build and also change the memory to go to pi pro create it if u have to and all the shit we did this session"
 
 **Phase 1 — Memory migration:**
 - Moved memory from `/home/trader/Documents/Obsidian Vault/` → in-repo `pi-pro/memory/`.
-- Created `pi-pro/memory/{README.md, AGENTS-rules.md, user.md, projects/promyra.md, daily/2026-06-11.md, sessions/index.md, sessions/2026-06-11-promyra-v050-build.md, sessions/2026-06-11-promyra-v050-finish.md, sessions/2026-06-11-promyra-v060-design.md, decisions/v0.5.0.md, decisions/v0.6.0.md}`.
+- Created `pi-pro/memory/{README.md, AGENTS-rules.md, user.md, projects/pi-pro.md, daily/2026-06-11.md, sessions/index.md, sessions/2026-06-11-pi-pro-v050-build.md, sessions/2026-06-11-pi-pro-v050-finish.md, sessions/2026-06-11-pi-pro-v060-design.md, decisions/v0.5.0.md, decisions/v0.6.0.md}`.
 - Wrote `pi-pro/AGENTS.md` at project root pointing at the in-repo memory with HARD GATEs (auto-recall, auto-store, session-end checklist, project auto-detection, brainstorming, TDD, conciseness, no-commit).
 
 **Phase 2 — v0.6.0 spec + plan files:**
-- `docs/superpowers/specs/2026-06-11-promyra-v0.6.0-design.md` (393 lines, 17 sections)
-- `docs/superpowers/plans/2026-06-11-promyra-v0.6.0.md` (192 lines, 13 tasks)
+- `docs/superpowers/specs/2026-06-11-pi-pro-v0.6.0-design.md` (393 lines, 17 sections)
+- `docs/superpowers/plans/2026-06-11-pi-pro-v0.6.0.md` (192 lines, 13 tasks)
 
 **Phase 3 — v0.6.0 build (TDD, packages/swarm):**
 - `packages/swarm/package.json` — new package, depends on cache/optimizer/provider/subagent/tasks/tools.
@@ -25,10 +25,10 @@
 - `src/orchestrator.ts` — 7-phase state machine, retry-with-feedback, budget enforcement, worktree lifecycle. (6 tests)
 
 **Files modified:**
-- `docs/superpowers/specs/2026-06-11-promyra-v0.6.0-design.md` (NEW)
-- `docs/superpowers/plans/2026-06-11-promyra-v0.6.0.md` (NEW)
+- `docs/superpowers/specs/2026-06-11-pi-pro-v0.6.0-design.md` (NEW)
+- `docs/superpowers/plans/2026-06-11-pi-pro-v0.6.0.md` (NEW)
 - `CHANGELOG.md` — v0.6.0 (in progress) entry
-- `memory/projects/promyra.md` — extended with v0.6.0 roadmap
+- `memory/projects/pi-pro.md` — extended with v0.6.0 roadmap
 - `memory/daily/2026-06-11.md` — Phase 4 (memory migration) + Phase 5 (v0.6.0 build) appended
 - `memory/sessions/index.md` — v0.6.0-build row added
 - `memory/decisions/v0.6.0.md` — 9 decisions captured
@@ -69,7 +69,7 @@
 
 **Not committed** (per AGENTS.md "no commits without explicit ask"). All work in working tree.
 
-**Vault links:** [[../projects/promyra]] (extended), [[../../../Daily/2026-06-11]] Phase 4+5.
+**Vault links:** [[../projects/pi-pro]] (extended), [[../../../Daily/2026-06-11]] Phase 4+5.
 
 ---
 
@@ -79,7 +79,7 @@
 
 **Phase 1 — v0.6.0 TUI + CLI integration:**
 - New `packages/tui-pro/src/components/SwarmPanel.tsx` — live swarm status, per-subagent rows, budget color states, pause reason display. 17 new tests (cumulative 95 in tui-pro).
-- `apps/pi/src/commands/swarm.ts` refactored to wrap `@promyra/swarm/Orchestrator`. New `SubagentDispatcher` bridges `LlmWorker` to the orchestrator's callback interface; per-role model pinning (builder=main, others=cheap).
+- `apps/pi/src/commands/swarm.ts` refactored to wrap `@pi/swarm/Orchestrator`. New `SubagentDispatcher` bridges `LlmWorker` to the orchestrator's callback interface; per-role model pinning (builder=main, others=cheap).
 - New CLI flags: `--plan`, `--budget=<usd>`, `--max-retries=N`, `--dry-run`, `--continue <id>`, `--status <id>`, `--merge <id>`, `--list`.
 - Multica preserved as direct dispatch (bypasses orchestrator).
 - `apps/pi/src/cli.ts` swarm routing updated; help text expanded.
@@ -91,10 +91,10 @@
   1. `a74c156` chore: housekeeping typecheck config + dep additions
   2. `b3351ca` feat(v0.5.0): Token/Cost Foundation
   3. `46544dd` feat(v0.6.0): Agent Swarm v1 — orchestrator + scratchpad + worktree
-  4. `7a6a745` chore: add apps/pi + apps/promyra CLIs, bench + checkpoint + memory + skill-bundle
-  5. `970d2c7` chore: rename @pi/* → @promyra/*, complete TUI source, drop apps/pi-pro
+  4. `7a6a745` chore: add apps/pi + apps/pi-pro CLIs, bench + checkpoint + memory + skill-bundle
+  5. `970d2c7` chore: rename @pi/* → @pi/*, complete TUI source, drop apps/pi-pro
   6. memory + CHANGELOG + AGENTS.md (in the same `git add -A` commit)
-- Created GitHub repo: [DNDED/promyra](https://github.com/DNDED/promyra) (public)
+- Created GitHub repo: [DNDED/pi-pro](https://github.com/DNDED/pi-pro) (public)
 - Pushed master to origin.
 
 **Verification (final):**
@@ -102,6 +102,6 @@
 - `pnpm -r typecheck` clean
 - All 14 packages build clean
 - `pi swarm --help` shows new flags
-- GitHub repo live at https://github.com/DNDED/promyra
+- GitHub repo live at https://github.com/DNDED/pi-pro
 
-**Vault links:** [[../projects/promyra]] (GitHub URL added)
+**Vault links:** [[../projects/pi-pro]] (GitHub URL added)

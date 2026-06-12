@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { LlmBenchRunner } from "../src/llm-bench-runner.js";
-import { Provider, Message, StreamChunk, CallOpts } from "@promyra/provider";
+import { Provider, Message, StreamChunk, CallOpts } from "@pi/provider";
 import { TASKS } from "../tasks/index.js";
 
 class ScriptedProvider implements Provider {

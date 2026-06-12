@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LlmBenchRunner } from "../src/llm-bench-runner.js";
 import { TASKS, BenchTask } from "../tasks/index.js";
-import { Provider, Message, CallOpts, StreamChunk } from "@promyra/provider";
+import { Provider, Message, CallOpts, StreamChunk } from "@pi/provider";
 import { testCommandFor, installHintFor } from "../src/llm-bench-runner.js";
 
 class InvariantProvider implements Provider {

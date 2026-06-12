@@ -1,6 +1,6 @@
 # tiny-express
 
-Synthetic fixture for the promyra eval. A minimal Express app with:
+Synthetic fixture for the pi-pro eval. A minimal Express app with:
 
 - `GET /api/users` — returns 2 users **with** `passwordHash` leaked (the bug for the security task)
 - `GET /api/parse-input` — duplicated helper logic (the refactor task)

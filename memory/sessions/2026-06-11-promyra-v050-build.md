@@ -1,4 +1,4 @@
-# 2026-06-11 ~22:00 — promyra v0.5.0 build (initial)
+# 2026-06-11 ~22:00 — pi-pro v0.5.0 build (initial)
 
 **Trigger:** Sid: "I want to make an improved pi agent like the pi agent should be performing better than claude code and opencode with the same model ... do research brainstorm a bunch use an agent swarm for help"
 
@@ -18,8 +18,8 @@
 - Approach = A+repo-map-block+light cascade (Sid's pick: Recommended)
 
 **Phase 3 — Spec + plan written (this turn):**
-- `docs/superpowers/specs/2026-06-11-promyra-v0.5.0-design.md` (213 lines)
-- `docs/superpowers/plans/2026-06-11-promyra-v0.5.0.md` (294 lines)
+- `docs/superpowers/specs/2026-06-11-pi-pro-v0.5.0-design.md` (213 lines)
+- `docs/superpowers/plans/2026-06-11-pi-pro-v0.5.0.md` (294 lines)
 
 **Phase 4 — Build (TDD-first, 2 subagents dispatched for parallel work):**
 - `packages/cache` (NEW, 20 tests) — `PromptCache` + `ToolResultCache`
@@ -44,4 +44,4 @@
 
 **Not committed** (per AGENTS.md "no commits without explicit ask").
 
-**Vault links (this turn):** [[../projects/promyra]] (created in Obsidian), [[../../../Daily/2026-06-11]] Phase 1.
+**Vault links (this turn):** [[../projects/pi-pro]] (created in Obsidian), [[../../../Daily/2026-06-11]] Phase 1.

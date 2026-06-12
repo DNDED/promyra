@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { LlmBenchRunner } from "../src/llm-bench-runner.js";
-import { Provider, Message, StreamChunk, CallOpts } from "@promyra/provider";
+import { Provider, Message, StreamChunk, CallOpts } from "@pi/provider";
 
 class ScriptedProvider implements Provider {
   name = "scripted";
@@ -33,7 +33,7 @@ describe("LlmBenchRunner.runAllParallel", () => {
         { type: "done", usage: { in: 0, out: 0 } },
       ]);
     }
-    const runner = new LlmBenchRunner(provider, { workspaceRoot: "/tmp/promyra-bench-parallel-" + Date.now(), bootstrapDeps: false, maxRetries: 0 });
+    const runner = new LlmBenchRunner(provider, { workspaceRoot: "/tmp/pi-pro-bench-parallel-" + Date.now(), bootstrapDeps: false, maxRetries: 0 });
     const start = Date.now();
     const summary = await runner.runAllParallel();
     const elapsed = Date.now() - start;
@@ -49,7 +49,7 @@ describe("LlmBenchRunner.runAllParallel", () => {
         { type: "done", usage: { in: 5, out: 2 } },
       ]);
     }
-    const runner = new LlmBenchRunner(provider, { workspaceRoot: "/tmp/promyra-bench-parallel-shape-" + Date.now(), bootstrapDeps: false, maxRetries: 0 });
+    const runner = new LlmBenchRunner(provider, { workspaceRoot: "/tmp/pi-pro-bench-parallel-shape-" + Date.now(), bootstrapDeps: false, maxRetries: 0 });
     const summary = await runner.runAllParallel((t) => t.id === "add-healthz" || t.id === "refactor-helper" || t.id === "fix-bug-auth");
     expect(summary.tokensIn).toBeGreaterThan(0);
     expect(summary.tokensOut).toBeGreaterThan(0);

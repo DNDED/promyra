@@ -9,7 +9,7 @@
  *   // rows: [{ flagLabel, totalCostUsd, avgWallMs, passRate, ... }]
  */
 
-import type { OptimizerFlags } from "@promyra/optimizer";
+import type { OptimizerFlags } from "@pi/optimizer";
 import { LlmBenchRunner, type BenchResult, type LlmBenchRunnerOpts } from "./llm-bench-runner.js";
 
 export type FlagConfigName = "all-on" | "all-off" | "cache-off" | "cascade-off" | "parallel-off" | "repomap-off";
@@ -72,7 +72,7 @@ export interface AttributionReport {
  * The first config is the baseline; deltas are computed against it.
  */
 export async function runAttribution(
-  provider: import("@promyra/provider").Provider,
+  provider: import("@pi/provider").Provider,
   baseOpts: LlmBenchRunnerOpts,
   configs: FlagConfigName[] = ["all-on", "all-off", "cache-off", "cascade-off"],
 ): Promise<AttributionReport> {

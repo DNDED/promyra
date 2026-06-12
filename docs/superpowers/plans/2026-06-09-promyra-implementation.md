@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build promyra — a TypeScript coding agent that beats OpenCode on coding capability and agentic task completion, layered on a fork of `badlogic/pi-mono`.
+**Goal:** Build pi-pro — a TypeScript coding agent that beats OpenCode on coding capability and agentic task completion, layered on a fork of `badlogic/pi-mono`.
 
-**Architecture:** Fork pi-mono monorepo. Add six new packages (`@promyra/skill-bundle`, `@promyra/checkpoint`, `@promyra/memory`, `@promyra/tasks`, `@promyra/subagent`, `@promyra/tui-pro`) plus a `promyra` binary. Each package is independently testable, independently shippable to upstream.
+**Architecture:** Fork pi-mono monorepo. Add six new packages (`@pi/skill-bundle`, `@pi/checkpoint`, `@pi/memory`, `@pi/tasks`, `@pi/subagent`, `@pi/tui-pro`) plus a `pi-pro` binary. Each package is independently testable, independently shippable to upstream.
 
 **Tech Stack:** TypeScript, Node 20+, pnpm workspaces, Vitest, Ink (React for TUI), Zod (schema validation), simple-git, gray-matter (frontmatter parsing), commander (CLI).
 
@@ -15,12 +15,12 @@
 ## File Structure (target)
 
 ```
-promyra/                                            # git repo, fork of pi-mono
+pi-pro/                                            # git repo, fork of pi-mono
 ├── docs/superpowers/
-│   ├── specs/2026-06-09-promyra-agent-design.md
-│   └── plans/2026-06-09-promyra-implementation.md
+│   ├── specs/2026-06-09-pi-pro-agent-design.md
+│   └── plans/2026-06-09-pi-pro-implementation.md
 ├── packages/
-│   ├── skill-bundle/                              # @promyra/skill-bundle   PR 1
+│   ├── skill-bundle/                              # @pi/skill-bundle   PR 1
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   ├── src/loader.ts
@@ -37,7 +37,7 @@ promyra/                                            # git repo, fork of pi-mono
 │   │   │   └── security-and-hardening/SKILL.md
 │   │   ├── prompt.md
 │   │   └── test/loader.test.ts
-│   ├── checkpoint/                                # @promyra/checkpoint     PR 2
+│   ├── checkpoint/                                # @pi/checkpoint     PR 2
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   ├── src/
@@ -45,14 +45,14 @@ promyra/                                            # git repo, fork of pi-mono
 │   │   │   ├── types.ts
 │   │   │   └── resume.ts
 │   │   └── test/store.test.ts
-│   ├── memory/                                    # @promyra/memory         PR 3
+│   ├── memory/                                    # @pi/memory         PR 3
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   ├── src/
 │   │   │   ├── session-memory.ts
 │   │   │   └── types.ts
 │   │   └── test/session-memory.test.ts
-│   ├── tasks/                                     # @promyra/tasks          PR 4
+│   ├── tasks/                                     # @pi/tasks          PR 4
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   ├── src/
@@ -63,7 +63,7 @@ promyra/                                            # git repo, fork of pi-mono
 │   │   │   ├── types.ts
 │   │   │   └── index.ts
 │   │   └── test/state-machine.test.ts
-│   ├── subagent/                                  # @promyra/subagent       PR 5
+│   ├── subagent/                                  # @pi/subagent       PR 5
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   ├── src/
@@ -77,7 +77,7 @@ promyra/                                            # git repo, fork of pi-mono
 │   │   │   │   └── security-auditor.ts
 │   │   │   └── types.ts
 │   │   └── test/router.test.ts
-│   └── tui-pro/                                   # @promyra/tui-pro        PR 6
+│   └── tui-pro/                                   # @pi/tui-pro        PR 6
 │       ├── package.json
 │       ├── tsconfig.json
 │       ├── src/
@@ -94,10 +94,10 @@ promyra/                                            # git repo, fork of pi-mono
 │       │       ├── pr.tsx
 │       │       └── verify.tsx
 │       └── test/components.test.tsx
-├── apps/promyra/                                   # promyra binary
+├── apps/pi-pro/                                   # pi-pro binary
 │   ├── package.json
 │   ├── tsconfig.json
-│   ├── bin/promyra
+│   ├── bin/pi-pro
 │   └── src/
 │       ├── cli.ts
 │       └── commands/
@@ -138,7 +138,7 @@ promyra/                                            # git repo, fork of pi-mono
 
 ```json
 {
-  "name": "promyra",
+  "name": "pi-pro",
   "version": "0.0.0",
   "private": true,
   "description": "Improved coding agent on top of pi-mono",
@@ -191,7 +191,7 @@ packages:
 ```
 node_modules/
 dist/
-.promyra/
+.pi-pro/
 *.log
 .env
 .env.local
@@ -215,7 +215,7 @@ export default defineConfig({
 - [ ] **Step 6: Install + commit**
 
 ```bash
-cd ~/Developer/promyra
+cd ~/Developer/pi-pro
 pnpm install
 git add package.json pnpm-workspace.yaml tsconfig.base.json vitest.config.ts .gitignore
 git commit -m "chore: workspace scaffold"
@@ -225,7 +225,7 @@ Expected: `pnpm install` succeeds, no errors.
 
 ---
 
-## Task 1 (PR 1): @promyra/skill-bundle
+## Task 1 (PR 1): @pi/skill-bundle
 
 **Files:** `packages/skill-bundle/*`
 
@@ -233,9 +233,9 @@ Expected: `pnpm install` succeeds, no errors.
 
 ```json
 {
-  "name": "@promyra/skill-bundle",
+  "name": "@pi/skill-bundle",
   "version": "0.1.0",
-  "description": "Curated skills for promyra",
+  "description": "Curated skills for pi-pro",
   "type": "module",
   "main": "./dist/loader.js",
   "types": "./dist/loader.d.ts",
@@ -287,7 +287,7 @@ export interface Skill extends SkillMeta {
 
 const SKILLS_DIR = "skills";
 const PROMPT_FILE = "prompt.md";
-const GLOBAL_SKILLS_DIR = join(process.env.HOME ?? "~", ".pi", "agent", "skills", "promyra");
+const GLOBAL_SKILLS_DIR = join(process.env.HOME ?? "~", ".pi", "agent", "skills", "pi-pro");
 
 export async function listSkills(packageDir: string = import.meta.dirname): Promise<SkillMeta[]> {
   const dir = join(packageDir, "..", SKILLS_DIR);
@@ -389,7 +389,7 @@ describe("skill-bundle loader", () => {
 });
 
 async function mkFixture(): Promise<string> {
-  const root = join(tmpdir(), `promyra-test-${Date.now()}`);
+  const root = join(tmpdir(), `pi-pro-test-${Date.now()}`);
   await mkdir(root, { recursive: true });
   await mkdir(join(root, "src"));
   await mkdir(join(root, "skills", "test-skill-a"), { recursive: true });
@@ -408,18 +408,18 @@ async function mkFixture(): Promise<string> {
 ```markdown
 # Promyra System Prompt
 
-You are promyra, an improved coding agent on top of pi-mono.
+You are pi-pro, an improved coding agent on top of pi-mono.
 
 ## Non-negotiable workflow
 
 For every non-trivial task, follow this order. Skills enforce it:
 
-1. **intake** — read `.promyra/memory.md` for project context, triage trivial vs non-trivial.
+1. **intake** — read `.pi-pro/memory.md` for project context, triage trivial vs non-trivial.
 2. **plan** — invoke `brainstorming` (one question at a time), then `writing-plans` to produce `docs/superpowers/plans/<task>.md`. Get user approval.
-3. **branch** — create a git worktree at `.promyra/worktrees/<task-id>/` on a new branch `promyra/<task-id>`.
+3. **branch** — create a git worktree at `.pi-pro/worktrees/<task-id>/` on a new branch `pi-pro/<task-id>`.
 4. **execute** — for each plan step, follow `tdd` (failing test first), then implement. Use `subagent-driven-development` to delegate specialized work to subagents.
 5. **verify** — invoke `verification-before-completion`. Run the full test suite. Run `code-reviewer` and `security-auditor` subagents. Refuse to mark done on any failure.
-6. **summarize** — append what changed to `.promyra/memory.md`. Generate a PR description. Offer `gh pr create`.
+6. **summarize** — append what changed to `.pi-pro/memory.md`. Generate a PR description. Offer `gh pr create`.
 
 ## Anti-patterns to refuse
 
@@ -435,7 +435,7 @@ Before every non-trivial action, run the `using-superpowers` skill mentally: "is
 
 - [ ] **Step 6: Create `packages/skill-bundle/skills/*/SKILL.md` (10 skills)**
 
-For each of the 10 skills listed in the spec, create a `SKILL.md` with frontmatter (`name`, `description`) and a body that summarizes the skill's purpose and triggers. The detailed skill content is loaded by pi from the global `~/.promyra/skills/` directory at runtime. Promyra ships a *pointer* + brief summary in each `SKILL.md`; the user is expected to also have the upstream superpowers skills installed (or the postinstall pulls them).
+For each of the 10 skills listed in the spec, create a `SKILL.md` with frontmatter (`name`, `description`) and a body that summarizes the skill's purpose and triggers. The detailed skill content is loaded by pi from the global `~/.pi-pro/skills/` directory at runtime. Promyra ships a *pointer* + brief summary in each `SKILL.md`; the user is expected to also have the upstream superpowers skills installed (or the postinstall pulls them).
 
 Example `skills/using-superpowers/SKILL.md`:
 ```markdown
@@ -459,21 +459,21 @@ Repeat this pattern for the other 9 skills: `brainstorming`, `writing-plans`, `t
 - [ ] **Step 7: Build + test + commit**
 
 ```bash
-cd ~/Developer/promyra
-pnpm --filter @promyra/skill-bundle build
-pnpm --filter @promyra/skill-bundle test
+cd ~/Developer/pi-pro
+pnpm --filter @pi/skill-bundle build
+pnpm --filter @pi/skill-bundle test
 ```
 
 Expected: build succeeds, 4 tests pass.
 
 ```bash
 git add packages/skill-bundle
-git commit -m "feat(skill-bundle): @promyra/skill-bundle with 10 curated skills + default system prompt"
+git commit -m "feat(skill-bundle): @pi/skill-bundle with 10 curated skills + default system prompt"
 ```
 
 ---
 
-## Task 2 (PR 2): @promyra/checkpoint
+## Task 2 (PR 2): @pi/checkpoint
 
 **Files:** `packages/checkpoint/*`
 
@@ -481,7 +481,7 @@ git commit -m "feat(skill-bundle): @promyra/skill-bundle with 10 curated skills 
 
 ```json
 {
-  "name": "@promyra/checkpoint",
+  "name": "@pi/checkpoint",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/store.js",
@@ -539,8 +539,8 @@ import { join, dirname } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
 import { Checkpoint, CheckpointSchema } from "./types.js";
 
-const SESSIONS_DIR = ".promyra/sessions";
-const CHECKPOINTS_DIR = ".promyra/checkpoints";
+const SESSIONS_DIR = ".pi-pro/sessions";
+const CHECKPOINTS_DIR = ".pi-pro/checkpoints";
 
 export class CheckpointStore {
   constructor(private readonly rootDir: string = process.cwd()) {}
@@ -635,7 +635,7 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-describe("@promyra/checkpoint", () => {
+describe("@pi/checkpoint", () => {
   it("creates checkpoints with predictable ids", async () => {
     const taskId = store.newTaskId();
     const cp1 = await store.snapshot({ seq: 1, taskId, state: "intake", gitTreeSha: "abc1234", payload: { foo: 1 } });
@@ -666,7 +666,7 @@ describe("@promyra/checkpoint", () => {
     const taskId = store.newTaskId();
     await store.snapshot({ seq: 1, taskId, state: "intake", gitTreeSha: "x", payload: {} });
     const { readFile } = await import("node:fs/promises");
-    const log = await readFile(join(dir, ".promyra/sessions", `${taskId}.jsonl`), "utf8");
+    const log = await readFile(join(dir, ".pi-pro/sessions", `${taskId}.jsonl`), "utf8");
     expect(log).toContain("\"state\":\"intake\"");
     expect(log).toContain("\"event\":\"checkpoint\"");
   });
@@ -691,21 +691,21 @@ describe("@promyra/checkpoint", () => {
 - [ ] **Step 6: Build + test + commit**
 
 ```bash
-cd ~/Developer/promyra
-pnpm --filter @promyra/checkpoint build
-pnpm --filter @promyra/checkpoint test
+cd ~/Developer/pi-pro
+pnpm --filter @pi/checkpoint build
+pnpm --filter @pi/checkpoint test
 ```
 
 Expected: 6 tests pass.
 
 ```bash
 git add packages/checkpoint
-git commit -m "feat(checkpoint): @promyra/checkpoint with jsonl session log + snapshot/resume"
+git commit -m "feat(checkpoint): @pi/checkpoint with jsonl session log + snapshot/resume"
 ```
 
 ---
 
-## Task 3 (PR 3): @promyra/memory
+## Task 3 (PR 3): @pi/memory
 
 **Files:** `packages/memory/*`
 
@@ -713,7 +713,7 @@ git commit -m "feat(checkpoint): @promyra/checkpoint with jsonl session log + sn
 
 ```json
 {
-  "name": "@promyra/memory",
+  "name": "@pi/memory",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/session-memory.js",
@@ -760,7 +760,7 @@ import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { ContextEntry } from "./types.js";
 
-const MEMORY_FILE = ".promyra/memory.md";
+const MEMORY_FILE = ".pi-pro/memory.md";
 
 export class SessionMemory {
   constructor(private readonly rootDir: string = process.cwd()) {}
@@ -845,7 +845,7 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-describe("@promyra/memory", () => {
+describe("@pi/memory", () => {
   it("returns empty string when no memory file exists", async () => {
     expect(await mem.read()).toBe("");
   });
@@ -883,21 +883,21 @@ describe("@promyra/memory", () => {
 - [ ] **Step 6: Build + test + commit**
 
 ```bash
-cd ~/Developer/promyra
-pnpm --filter @promyra/memory build
-pnpm --filter @promyra/memory test
+cd ~/Developer/pi-pro
+pnpm --filter @pi/memory build
+pnpm --filter @pi/memory test
 ```
 
 Expected: 5 tests pass.
 
 ```bash
 git add packages/memory
-git commit -m "feat(memory): @promyra/memory with markdown-backed session memory"
+git commit -m "feat(memory): @pi/memory with markdown-backed session memory"
 ```
 
 ---
 
-## Task 4 (PR 4): @promyra/tasks
+## Task 4 (PR 4): @pi/tasks
 
 **Files:** `packages/tasks/*`
 
@@ -905,7 +905,7 @@ git commit -m "feat(memory): @promyra/memory with markdown-backed session memory
 
 ```json
 {
-  "name": "@promyra/tasks",
+  "name": "@pi/tasks",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -918,8 +918,8 @@ git commit -m "feat(memory): @promyra/memory with markdown-backed session memory
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@promyra/checkpoint": "workspace:*",
-    "@promyra/memory": "workspace:*",
+    "@pi/checkpoint": "workspace:*",
+    "@pi/memory": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {
@@ -1051,7 +1051,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { SessionEvent, SessionEventSchema } from "./types.js";
 
-const SESSIONS_DIR = ".promyra/sessions";
+const SESSIONS_DIR = ".pi-pro/sessions";
 
 export class SessionLog {
   constructor(private readonly rootDir: string = process.cwd()) {}
@@ -1082,7 +1082,7 @@ import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-const BASE = ".promyra/worktrees";
+const BASE = ".pi-pro/worktrees";
 
 export interface WorktreeInfo {
   taskId: string;
@@ -1098,7 +1098,7 @@ export class WorktreeStore {
   }
 
   private branchName(taskId: string): string {
-    return `promyra/${taskId.replace(/^tsk_/, "")}`;
+    return `pi-pro/${taskId.replace(/^tsk_/, "")}`;
   }
 
   create(taskId: string): WorktreeInfo {
@@ -1155,8 +1155,8 @@ function parsePorcelain(out: string, rootDir: string): WorktreeInfo[] {
 - [ ] **Step 7: Create `packages/tasks/src/task-runner.ts`**
 
 ```typescript
-import { CheckpointStore } from "@promyra/checkpoint";
-import { SessionMemory } from "@promyra/memory";
+import { CheckpointStore } from "@pi/checkpoint";
+import { SessionMemory } from "@pi/memory";
 import { StateMachine, canTransition } from "./state-machine.js";
 import { SessionLog } from "./session-log.js";
 import { WorktreeStore } from "./worktree-store.js";
@@ -1253,7 +1253,7 @@ import { describe, it, expect } from "vitest";
 import { StateMachine, canTransition, nextStates, TRANSITIONS } from "../src/state-machine.js";
 import { Plan } from "../src/types.js";
 
-describe("@promyra/tasks state machine", () => {
+describe("@pi/tasks state machine", () => {
   it("starts at intake", () => {
     const sm = new StateMachine();
     expect(sm.state()).toBe("intake");
@@ -1294,21 +1294,21 @@ describe("@promyra/tasks state machine", () => {
 - [ ] **Step 10: Build + test + commit**
 
 ```bash
-cd ~/Developer/promyra
-pnpm --filter @promyra/tasks build
-pnpm --filter @promyra/tasks test
+cd ~/Developer/pi-pro
+pnpm --filter @pi/tasks build
+pnpm --filter @pi/tasks test
 ```
 
 Expected: 6 tests pass.
 
 ```bash
 git add packages/tasks
-git commit -m "feat(tasks): @promyra/tasks state machine + session log + worktree store + TaskRunner"
+git commit -m "feat(tasks): @pi/tasks state machine + session log + worktree store + TaskRunner"
 ```
 
 ---
 
-## Task 5 (PR 5): @promyra/subagent
+## Task 5 (PR 5): @pi/subagent
 
 **Files:** `packages/subagent/*`
 
@@ -1316,7 +1316,7 @@ git commit -m "feat(tasks): @promyra/tasks state machine + session log + worktre
 
 ```json
 {
-  "name": "@promyra/subagent",
+  "name": "@pi/subagent",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/router.js",
@@ -1613,7 +1613,7 @@ class AlwaysFailingWorker implements Worker {
   }
 }
 
-describe("@promyra/subagent", () => {
+describe("@pi/subagent", () => {
   it("build role allows bash/write/edit and disallows webfetch", () => {
     expect(isAllowed("build", "bash")).toBe(true);
     expect(isAllowed("build", "write")).toBe(true);
@@ -1670,29 +1670,29 @@ describe("@promyra/subagent", () => {
 - [ ] **Step 12: Build + test + commit**
 
 ```bash
-cd ~/Developer/promyra
-pnpm --filter @promyra/subagent build
-pnpm --filter @promyra/subagent test
+cd ~/Developer/pi-pro
+pnpm --filter @pi/subagent build
+pnpm --filter @pi/subagent test
 ```
 
 Expected: 7 tests pass.
 
 ```bash
 git add packages/subagent
-git commit -m "feat(subagent): @promyra/subagent role router with build/test-runner/reviewer/security"
+git commit -m "feat(subagent): @pi/subagent role router with build/test-runner/reviewer/security"
 ```
 
 ---
 
-## Task 6 (PR 6): @promyra/tui-pro + apps/promyra binary
+## Task 6 (PR 6): @pi/tui-pro + apps/pi-pro binary
 
-**Files:** `packages/tui-pro/*`, `apps/promyra/*`
+**Files:** `packages/tui-pro/*`, `apps/pi-pro/*`
 
 - [ ] **Step 1: Create `packages/tui-pro/package.json`**
 
 ```json
 {
-  "name": "@promyra/tui-pro",
+  "name": "@pi/tui-pro",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/theme.js",
@@ -1809,7 +1809,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ state, taskId, tokensUsed,
   return (
     <Box borderStyle="single" borderColor={theme.border} paddingX={1} justifyContent="space-between">
       <Box>
-        <Text color={theme.accent}>promyra</Text>
+        <Text color={theme.accent}>pi-pro</Text>
         <Text color={theme.textDim}>  state: </Text>
         <Text color={theme.text}>{state}</Text>
         {taskId && (
@@ -1837,7 +1837,7 @@ import { ToolCallCard } from "../src/components/ToolCallCard.js";
 import { StatusBar } from "../src/components/StatusBar.js";
 import { theme } from "../src/theme.js";
 
-describe("@promyra/tui-pro", () => {
+describe("@pi/tui-pro", () => {
   it("ToolCallCard renders with success icon", () => {
     const { lastFrame } = render(
       <ToolCallCard name="bash" status="pass" summary="ls -la" details="42 files" />
@@ -1877,22 +1877,22 @@ describe("@promyra/tui-pro", () => {
 - [ ] **Step 7: Build + test tui-pro**
 
 ```bash
-cd ~/Developer/promyra
-pnpm --filter @promyra/tui-pro build
-pnpm --filter @promyra/tui-pro test
+cd ~/Developer/pi-pro
+pnpm --filter @pi/tui-pro build
+pnpm --filter @pi/tui-pro test
 ```
 
 Expected: 5 tests pass.
 
-- [ ] **Step 8: Create `apps/promyra/package.json`**
+- [ ] **Step 8: Create `apps/pi-pro/package.json`**
 
 ```json
 {
-  "name": "promyra",
+  "name": "pi-pro",
   "version": "0.1.0",
   "description": "Improved coding agent on top of pi-mono",
   "type": "module",
-  "bin": { "promyra": "./bin/promyra" },
+  "bin": { "pi-pro": "./bin/pi-pro" },
   "files": ["bin", "dist"],
   "scripts": {
     "build": "tsc",
@@ -1900,12 +1900,12 @@ Expected: 5 tests pass.
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@promyra/skill-bundle": "workspace:*",
-    "@promyra/checkpoint": "workspace:*",
-    "@promyra/memory": "workspace:*",
-    "@promyra/tasks": "workspace:*",
-    "@promyra/subagent": "workspace:*",
-    "@promyra/tui-pro": "workspace:*",
+    "@pi/skill-bundle": "workspace:*",
+    "@pi/checkpoint": "workspace:*",
+    "@pi/memory": "workspace:*",
+    "@pi/tasks": "workspace:*",
+    "@pi/subagent": "workspace:*",
+    "@pi/tui-pro": "workspace:*",
     "commander": "^12.0.0"
   },
   "devDependencies": {
@@ -1916,7 +1916,7 @@ Expected: 5 tests pass.
 }
 ```
 
-- [ ] **Step 9: Create `apps/promyra/tsconfig.json`**
+- [ ] **Step 9: Create `apps/pi-pro/tsconfig.json`**
 
 ```json
 {
@@ -1926,7 +1926,7 @@ Expected: 5 tests pass.
 }
 ```
 
-- [ ] **Step 10: Create `apps/promyra/bin/promyra`**
+- [ ] **Step 10: Create `apps/pi-pro/bin/pi-pro`**
 
 ```bash
 #!/usr/bin/env node
@@ -1934,10 +1934,10 @@ import("../dist/cli.js").then(m => m.main()).catch(e => { console.error(e); proc
 ```
 
 ```bash
-chmod +x apps/promyra/bin/promyra
+chmod +x apps/pi-pro/bin/pi-pro
 ```
 
-- [ ] **Step 11: Create `apps/promyra/src/cli.ts`**
+- [ ] **Step 11: Create `apps/pi-pro/src/cli.ts`**
 
 ```typescript
 import { Command } from "commander";
@@ -1950,7 +1950,7 @@ import { doctor } from "./commands/doctor.js";
 export function main(): void {
   const program = new Command();
   program
-    .name("promyra")
+    .name("pi-pro")
     .description("Improved coding agent on top of pi-mono")
     .version("0.1.0")
     .argument("[task...]", "task description")
@@ -1990,12 +1990,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 ```
 
-- [ ] **Step 12: Create `apps/promyra/src/commands/start.ts`**
+- [ ] **Step 12: Create `apps/pi-pro/src/commands/start.ts`**
 
 ```typescript
-import { CheckpointStore } from "@promyra/checkpoint";
-import { SessionMemory } from "@promyra/memory";
-import { TaskRunner, SessionLog, WorktreeStore, Plan } from "@promyra/tasks";
+import { CheckpointStore } from "@pi/checkpoint";
+import { SessionMemory } from "@pi/memory";
+import { TaskRunner, SessionLog, WorktreeStore, Plan } from "@pi/tasks";
 
 export async function start(taskDescription: string = "interactive session"): Promise<void> {
   const checkpoint = new CheckpointStore();
@@ -2029,14 +2029,14 @@ export async function start(taskDescription: string = "interactive session"): Pr
   await runner.summarize(`Plan complete for: ${taskDescription}`);
   await runner.markStepDone("summarize");
 
-  console.log(`✓ promyra: task ${taskId} completed. Run 'promyra replay ${taskId}' to inspect.`);
+  console.log(`✓ pi-pro: task ${taskId} completed. Run 'pi-pro replay ${taskId}' to inspect.`);
 }
 ```
 
-- [ ] **Step 13: Create `apps/promyra/src/commands/resume.ts`**
+- [ ] **Step 13: Create `apps/pi-pro/src/commands/resume.ts`**
 
 ```typescript
-import { CheckpointStore } from "@promyra/checkpoint";
+import { CheckpointStore } from "@pi/checkpoint";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -2061,7 +2061,7 @@ export async function resume(taskId?: string): Promise<void> {
 }
 
 async function latestTaskId(store: CheckpointStore): Promise<string | null> {
-  const dir = ".promyra/checkpoints";
+  const dir = ".pi-pro/checkpoints";
   try {
     const entries = await readdir(dir);
     if (entries.length === 0) return null;
@@ -2073,10 +2073,10 @@ async function latestTaskId(store: CheckpointStore): Promise<string | null> {
 }
 ```
 
-- [ ] **Step 14: Create `apps/promyra/src/commands/replay.ts`**
+- [ ] **Step 14: Create `apps/pi-pro/src/commands/replay.ts`**
 
 ```typescript
-import { SessionLog } from "@promyra/tasks";
+import { SessionLog } from "@pi/tasks";
 
 export async function replay(taskId: string): Promise<void> {
   const log = new SessionLog();
@@ -2092,22 +2092,22 @@ export async function replay(taskId: string): Promise<void> {
 }
 ```
 
-- [ ] **Step 15: Create `apps/promyra/src/commands/merge.ts`**
+- [ ] **Step 15: Create `apps/pi-pro/src/commands/merge.ts`**
 
 ```typescript
 export async function merge(taskId: string): Promise<void> {
-  console.log(`promyra merge ${taskId}: stub — in v1 this rebases and runs 'gh pr create'.`);
-  console.log(`Worktree: .promyra/worktrees/${taskId}`);
-  console.log(`Branch:   promyra/${taskId.replace(/^tsk_/, "")}`);
+  console.log(`pi-pro merge ${taskId}: stub — in v1 this rebases and runs 'gh pr create'.`);
+  console.log(`Worktree: .pi-pro/worktrees/${taskId}`);
+  console.log(`Branch:   pi-pro/${taskId.replace(/^tsk_/, "")}`);
 }
 ```
 
-- [ ] **Step 16: Create `apps/promyra/src/commands/doctor.ts`**
+- [ ] **Step 16: Create `apps/pi-pro/src/commands/doctor.ts`**
 
 ```typescript
 import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
-import { listSkills, loadPrompt } from "@promyra/skill-bundle";
+import { listSkills, loadPrompt } from "@pi/skill-bundle";
 import { join } from "node:path";
 
 export async function doctor(): Promise<void> {
@@ -2127,9 +2127,9 @@ export async function doctor(): Promise<void> {
 
   try {
     const skills = await listSkills(join(import.meta.dirname, "..", "..", "packages", "skill-bundle"));
-    checks.push({ name: "@promyra/skill-bundle loads", ok: true, detail: `${skills.length} skills` });
+    checks.push({ name: "@pi/skill-bundle loads", ok: true, detail: `${skills.length} skills` });
   } catch (e) {
-    checks.push({ name: "@promyra/skill-bundle loads", ok: false, detail: (e as Error).message });
+    checks.push({ name: "@pi/skill-bundle loads", ok: false, detail: (e as Error).message });
   }
 
   try {
@@ -2139,7 +2139,7 @@ export async function doctor(): Promise<void> {
     checks.push({ name: "default system prompt", ok: false, detail: (e as Error).message });
   }
 
-  console.log("\npromyra doctor:\n");
+  console.log("\npi-pro doctor:\n");
   for (const c of checks) {
     console.log(`  ${c.ok ? "✓" : "✗"} ${c.name} — ${c.detail}`);
   }
@@ -2152,10 +2152,10 @@ export async function doctor(): Promise<void> {
 - [ ] **Step 17: Build + smoke test the binary**
 
 ```bash
-cd ~/Developer/promyra
-pnpm --filter promyra build
-node apps/promyra/bin/promyra --version
-node apps/promyra/bin/promyra doctor
+cd ~/Developer/pi-pro
+pnpm --filter pi-pro build
+node apps/pi-pro/bin/pi-pro --version
+node apps/pi-pro/bin/pi-pro doctor
 ```
 
 Expected: prints `0.1.0` and the doctor report.
@@ -2163,9 +2163,9 @@ Expected: prints `0.1.0` and the doctor report.
 - [ ] **Step 18: Commit + tag**
 
 ```bash
-cd ~/Developer/promyra
-git add packages/tui-pro apps/promyra
-git commit -m "feat(tui-pro,promyra): OpenCode-style Ink components + promyra binary"
+cd ~/Developer/pi-pro
+git add packages/tui-pro apps/pi-pro
+git commit -m "feat(tui-pro,pi-pro): OpenCode-style Ink components + pi-pro binary"
 git tag v0.1.0
 ```
 
@@ -2264,7 +2264,7 @@ async function runTask(task: BenchTask): Promise<Result> {
     return { taskId: task.id, completed: false, tokensIn: 0, tokensOut: 0, wallMs: 0, interventions: 0, error: `Fixture missing: ${fixturePath}` };
   }
   try {
-    execSync(`node apps/promyra/bin/promyra '${task.description}'`, {
+    execSync(`node apps/pi-pro/bin/pi-pro '${task.description}'`, {
       cwd: process.cwd(),
       encoding: "utf8",
       stdio: "pipe",

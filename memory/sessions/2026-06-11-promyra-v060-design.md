@@ -1,4 +1,4 @@
-# 2026-06-11 ~23:55 — promyra v0.6.0 design + memory migration
+# 2026-06-11 ~23:55 — pi-pro v0.6.0 design + memory migration
 
 **Trigger:** Sid: "ok whats next" (after v0.5.0 was shipped but uncommitted), then "v0.6.0 Agent Swarm v1 (the next roadmap release)" (Sid's pick from 4 options).
 
@@ -12,7 +12,7 @@
 
 **Phase B — Spec approved (in this conversation, design above IS the spec):**
 - 11 sections: architecture, components, communication, topology, worktrees, cost cap, failure handling, model routing, CLI surface, TUI surface, error handling, testing, out-of-scope, risks, rollout, verification.
-- File-based scratchpad at `.promyra/swarm/<id>/` (durable, diffable, survives restarts).
+- File-based scratchpad at `.pi-pro/swarm/<id>/` (durable, diffable, survives restarts).
 - 3-stage parallel-friendly topology: PLAN → RESEARCH+PLANNER (parallel) → BUILD → TEST → CRITIQUE → DECIDE → MERGE.
 - 5 subagents + 1 orchestrator. Multica preserved as one-shot direct dispatch (bypasses orchestrator).
 - New `packages/swarm` package (orchestrator, scratchpad, worktree-pool, verification-gate, budget, types).
@@ -23,11 +23,11 @@
 - **Migration:** Memory moved from `/home/trader/Documents/Obsidian Vault/` (per-AGENTS.md default) → `/home/trader/Developer/pi-pro/memory/` (in-repo, project-scoped).
 - **Files created in `pi-pro/memory/`:**
   - `README.md` (overview of in-repo memory)
-  - `projects/promyra.md` (project note, extended with v0.6.0)
+  - `projects/pi-pro.md` (project note, extended with v0.6.0)
   - `daily/2026-06-11.md` (full day narrative: v0.5.0 build + v0.5.0-finish + v0.6.0 design + memory migration)
-  - `sessions/2026-06-11-promyra-v050-build.md`
-  - `sessions/2026-06-11-promyra-v050-finish.md`
-  - `sessions/2026-06-11-promyra-v060-design.md` (this file)
+  - `sessions/2026-06-11-pi-pro-v050-build.md`
+  - `sessions/2026-06-11-pi-pro-v050-finish.md`
+  - `sessions/2026-06-11-pi-pro-v060-design.md` (this file)
   - `sessions/index.md`
   - `decisions/v0.5.0.md`
   - `decisions/v0.6.0.md`
@@ -37,7 +37,7 @@
 - **Why:** Sid wants memory tied to the repo, not global Obsidian. Obsidian vault preserved for other projects (leadops, argent, etc.).
 
 **Decisions (memory):**
-- In-repo memory at `pi-pro/memory/` (not `docs/memory/` or `.promyra/memory/`) for clean git tracking.
+- In-repo memory at `pi-pro/memory/` (not `docs/memory/` or `.pi-pro/memory/`) for clean git tracking.
 - Same structure as Obsidian: `projects/`, `daily/`, `sessions/`, `decisions/` (renamed from `Memory/Decision Log.md` per-v0.5.0 + per-v0.6.0 for cleaner per-release).
 - Sid's 5-file auto-recall (from global AGENTS.md) now reads from in-repo when working in pi-pro.
 
@@ -53,4 +53,4 @@
 - v0.6.0 spec + plan files to be written this turn.
 - v0.6.0 build begins with `packages/swarm` skeleton (this turn).
 
-**Vault links:** [[../projects/promyra]] (extended), [[../../../Daily/2026-06-11]] Phase 3 + 4.
+**Vault links:** [[../projects/pi-pro]] (extended), [[../../../Daily/2026-06-11]] Phase 3 + 4.

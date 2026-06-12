@@ -46,7 +46,7 @@ async function runTask(task: BenchTask): Promise<Result> {
   }
   try {
     const desc = task.description.replace(/'/g, "'\\''");
-    execSync(`node apps/promyra/bin/promyra '${desc}'`, {
+    execSync(`node apps/pi-pro/bin/pi-pro '${desc}'`, {
       cwd: process.cwd(),
       encoding: "utf8",
       stdio: "pipe",

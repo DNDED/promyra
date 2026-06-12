@@ -1,4 +1,4 @@
-import { OpenCodeGoProvider } from "@promyra/provider";
+import { OpenCodeGoProvider } from "@pi/provider";
 
 const REVIEW_MODEL = "qwen3.7-max";
 

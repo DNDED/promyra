@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { LlmBenchRunner } from "../src/llm-bench-runner.js";
 import { BenchTask } from "../tasks/index.js";
-import { Provider, Message, CallOpts, StreamChunk } from "@promyra/provider";
+import { Provider, Message, CallOpts, StreamChunk } from "@pi/provider";
 
 class ScriptedProvider implements Provider {
   name = "scripted";

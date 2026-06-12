@@ -1,4 +1,4 @@
-# 2026-06-11 ~23:30 — promyra v0.5.0 finish-the-rest
+# 2026-06-11 ~23:30 — pi-pro v0.5.0 finish-the-rest
 
 **Trigger:** Sid: "fix the rest" (4 pending v0.5.0 items after the prior build session).
 
@@ -11,10 +11,10 @@
 - `bench/src/llm-bench-runner.ts` — added costUsd/cacheHits/flagLabel to BenchResult, flags + useRepoMap opts
 - `bench/src/attribution.ts` (NEW) — FLAG_CONFIGS, runAttribution, formatAttribution
 - `bench/test/attribution.test.ts` (NEW, 5 tests)
-- `bench/package.json` — added @promyra/cache, @promyra/optimizer, @promyra/repo-map
+- `bench/package.json` — added @pi/cache, @pi/optimizer, @pi/repo-map
 - `apps/pi/src/flags.ts` (NEW)
 - `apps/pi/test/flags.test.ts` (NEW, 9 tests)
-- `apps/pi/package.json` — added @promyra/optimizer
+- `apps/pi/package.json` — added @pi/optimizer
 - `packages/subagent/src/router.ts` — readFlagsFromEnv() + flag-aware Optimizer/ToolResultCache wiring
 - `CHANGELOG.md` — v0.5.0 entry (full)
 
@@ -36,4 +36,4 @@
 - `pnpm -r build`: all 14 packages clean
 - Live LLM bench deferred (requires API key)
 
-**Vault links:** [[../projects/promyra]], [[../../../Daily/2026-06-11]] Phase 2.
+**Vault links:** [[../projects/pi-pro]], [[../../../Daily/2026-06-11]] Phase 2.

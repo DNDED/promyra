@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
-import { Provider, Message, CallOpts, StreamChunk } from "@promyra/provider";
-import { LlmWorker } from "@promyra/subagent";
-import { StepContext } from "@promyra/subagent/src/types.js";
-import { createBashTool, createEditTool, createReadTool, createWriteTool, createGrepTool, createGlobTool } from "@promyra/tools";
+import { Provider, Message, CallOpts, StreamChunk } from "@pi/provider";
+import { LlmWorker } from "@pi/subagent";
+import { StepContext } from "@pi/subagent/src/types.js";
+import { createBashTool, createEditTool, createReadTool, createWriteTool, createGrepTool, createGlobTool } from "@pi/tools";
 import { LlmBenchRunner } from "../src/llm-bench-runner.js";
 import { BenchTask } from "../tasks/index.js";
 
