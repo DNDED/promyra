@@ -2,7 +2,7 @@ import React from "react";
 import { Box, Text, useInput } from "ink";
 import { theme, agentColor } from "../theme.js";
 import { handleKey, INITIAL_RUNTIME, type VimRuntime } from "../util/vim-dispatch.js";
-import type { VimMode } from "../util/vim.js";
+import type { VimMode, ExCommand } from "../util/vim.js";
 
 export interface PromptInputProps {
   value: string;
@@ -16,38 +16,38 @@ export interface PromptInputProps {
   width?: number | string;
   /** Initial mode. Default "insert". */
   initialMode?: VimMode;
+  /** Called when an ex command is executed (not "none"). */
+  onExCommand?: (cmd: ExCommand) => void;
 }
-
-const EmptyBorder = {
-  topLeft: " ",
-  topRight: " ",
-  bottomLeft: " ",
-  bottomRight: " ",
-  vertical: " ",
-  horizontal: " ",
-  topT: " ",
-  bottomT: " ",
-  leftT: " ",
-  rightT: " ",
-  cross: " ",
-};
-
-const SplitBorder = {
-  ...EmptyBorder,
-  vertical: "┃",
-  bottomLeft: "╹",
-};
 
 function modeLabel(mode: VimMode): string {
   if (mode === "insert") return "-- INSERT --";
   if (mode === "normal") return "-- NORMAL --";
-  return "-- VISUAL --";
+  if (mode === "visual") return "-- VISUAL --";
+  return "-- EX --";
 }
 
 function modeColor(mode: VimMode): string {
   if (mode === "insert") return theme.success;
   if (mode === "normal") return theme.primary;
-  return theme.accent;
+  if (mode === "visual") return theme.accent;
+  return theme.warning;
+}
+
+function exHelpLine(): string {
+  return ":w write  :q quit  :q! force  :wq save+quit  :clear  :help";
+}
+
+function normalHint(): string {
+  return "i:insert  v:visual  ::ex  ^w:del-word  h/l:move  w/b:word  0/$:line";
+}
+
+function visualHint(): string {
+  return "esc:normal  d:delete  y:yank  ::ex";
+}
+
+function exHint(): string {
+  return exHelpLine();
 }
 
 export function PromptInput({
@@ -61,6 +61,7 @@ export function PromptInput({
   disabled = false,
   width = "100%",
   initialMode = "insert",
+  onExCommand,
 }: PromptInputProps) {
   const accent = agentColor(agent);
   const [runtime, setRuntime] = React.useState<VimRuntime>(() => ({
@@ -68,6 +69,7 @@ export function PromptInput({
     state: { ...INITIAL_RUNTIME.state, text: value, cursor: value.length, mode: initialMode },
   }));
   const lastValueRef = React.useRef<string>(value);
+  const lastExRef = React.useRef<ExCommand | null>(null);
 
   React.useEffect(() => {
     if (value !== lastValueRef.current) {
@@ -95,12 +97,20 @@ export function PromptInput({
       if (key.return && next.state.mode === "insert") {
         const trimmed = next.state.text.trim();
         if (trimmed.length > 0) onSubmit(trimmed);
-        return { ...r, state: { ...next.state, mode: "insert", cursor: next.state.text.length, undoStack: [], pendingOp: "none", pendingCount: 0 } };
+        return { ...r, state: { ...next.state, mode: "insert", cursor: next.state.text.length, undoStack: [], pendingOp: "none", pendingCount: 0, exBuf: "" } };
+      }
+      if (next.state.mode !== "ex" && r.state.mode === "ex" && next.state.lastExCommand.kind !== "none") {
+        const cmd = next.state.lastExCommand;
+        if (lastExRef.current !== cmd) {
+          lastExRef.current = cmd;
+          queueMicrotask(() => onExCommand?.(cmd));
+        }
       }
       return next;
     });
   });
 
+  const mode = runtime.state.mode;
   const text = runtime.state.text;
   const cursor = clampCursor(text, runtime.state.cursor);
   const placeholderText = placeholder;
@@ -109,7 +119,7 @@ export function PromptInput({
   const before = text.slice(0, cursor);
   const at = text[cursor] ?? "";
   const after = text.slice(cursor + at.length);
-  const showHint = runtime.state.mode !== "insert";
+  const inEx = mode === "ex";
 
   return (
     <Box flexDirection="column" width={width}>
@@ -122,27 +132,34 @@ export function PromptInput({
           paddingY={1}
         >
           <Box>
-            <Text color={modeColor(runtime.state.mode)} bold>
-              {modeLabel(runtime.state.mode)}
+            <Text color={modeColor(mode)} bold>
+              {modeLabel(mode)}
             </Text>
             {runtime.state.pendingOp !== "none" ? (
               <Text color={theme.warning}>  {runtime.state.pendingOp}{runtime.state.pendingCount > 0 ? runtime.state.pendingCount : ""}</Text>
             ) : null}
           </Box>
-          <Text color={textColor} wrap="wrap">
-            {text ? (
-              <>
-                {before}
-                {!disabled ? <Text color={theme.accent} inverse>{at || " "}</Text> : null}
-                {after}
-              </>
-            ) : (
-              <>
-                {displayText}
-                {!disabled ? <Text color={theme.text}>▌</Text> : null}
-              </>
-            )}
-          </Text>
+          {inEx ? (
+            <Box>
+              <Text color={theme.warning}>{runtime.state.exBuf || ":"}</Text>
+              {!disabled ? <Text color={theme.accent} inverse> </Text> : null}
+            </Box>
+          ) : (
+            <Text color={textColor} wrap="wrap">
+              {text ? (
+                <>
+                  {before}
+                  {!disabled ? <Text color={theme.accent} inverse>{at || " "}</Text> : null}
+                  {after}
+                </>
+              ) : (
+                <>
+                  {displayText}
+                  {!disabled ? <Text color={theme.text}>▌</Text> : null}
+                </>
+              )}
+            </Text>
+          )}
           <Box marginTop={1} justifyContent="space-between">
             <Box>
               <Text color={accent}>{agent}</Text>
@@ -159,10 +176,12 @@ export function PromptInput({
                 </>
               ) : null}
             </Box>
-            {showHint ? (
-              <Text color={theme.textMuted}>
-                {runtime.state.mode === "normal" ? "i:insert  v:visual  :w/0/$" : "esc:normal  d:delete  y:yank"}
-              </Text>
+            {mode === "normal" ? (
+              <Text color={theme.textMuted}>{normalHint()}</Text>
+            ) : mode === "visual" ? (
+              <Text color={theme.textMuted}>{visualHint()}</Text>
+            ) : mode === "ex" ? (
+              <Text color={theme.textMuted}>{exHint()}</Text>
             ) : null}
           </Box>
         </Box>
