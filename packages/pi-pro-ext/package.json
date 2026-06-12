@@ -1,0 +1,24 @@
+{
+  "name": "@pi-pro/ext",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "pi-pro v0.1.0 — Sid's improved coding agent as a pi-mono extension. Adds agent modes, plan mode, todo tool, config, memory, and REPL helpers on top of @earendil-works/pi-coding-agent.",
+  "keywords": [
+    "pi-package"
+  ],
+  "main": "./index.ts",
+  "files": [
+    "index.ts",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@pi-pro/config": "workspace:*",
+    "typebox": "^1.2.0"
+  }
+}

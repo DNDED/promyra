@@ -1,0 +1,14 @@
+{
+  "name": "pi-pro-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "pi-pro development monorepo — source for the pi-pro extension published to pi-mono.",
+  "scripts": {
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "install-extension": "pi install ./packages/pi-pro-ext",
+    "uninstall-extension": "pi remove ./packages/pi-pro-ext"
+  }
+}
