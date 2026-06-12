@@ -1,6 +1,8 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
 import { theme, agentColor } from "../theme.js";
+import { handleKey, INITIAL_RUNTIME, type VimRuntime } from "../util/vim-dispatch.js";
+import type { VimMode } from "../util/vim.js";
 
 export interface PromptInputProps {
   value: string;
@@ -12,6 +14,8 @@ export interface PromptInputProps {
   provider?: string;
   disabled?: boolean;
   width?: number | string;
+  /** Initial mode. Default "insert". */
+  initialMode?: VimMode;
 }
 
 const EmptyBorder = {
@@ -34,30 +38,16 @@ const SplitBorder = {
   bottomLeft: "╹",
 };
 
-function clamp(n: number, lo: number, hi: number): number {
-  if (n < lo) return lo;
-  if (n > hi) return hi;
-  return n;
+function modeLabel(mode: VimMode): string {
+  if (mode === "insert") return "-- INSERT --";
+  if (mode === "normal") return "-- NORMAL --";
+  return "-- VISUAL --";
 }
 
-function wordForward(text: string, from: number): number {
-  if (from >= text.length) return text.length;
-  let i = from;
-  const atWord = /\w/.test(text[i] ?? "");
-  if (atWord) {
-    while (i < text.length && /\w/.test(text[i] ?? "")) i++;
-  }
-  while (i < text.length && !/\w/.test(text[i] ?? "")) i++;
-  return i;
-}
-
-function wordBackward(text: string, from: number): number {
-  if (from <= 0) return 0;
-  let i = from;
-  if (i > text.length) i = text.length;
-  while (i > 0 && !/\w/.test(text[i - 1] ?? "")) i--;
-  while (i > 0 && /\w/.test(text[i - 1] ?? "")) i--;
-  return i;
+function modeColor(mode: VimMode): string {
+  if (mode === "insert") return theme.success;
+  if (mode === "normal") return theme.primary;
+  return theme.accent;
 }
 
 export function PromptInput({
@@ -70,141 +60,56 @@ export function PromptInput({
   provider,
   disabled = false,
   width = "100%",
+  initialMode = "insert",
 }: PromptInputProps) {
   const accent = agentColor(agent);
-  const [cursor, setCursor] = React.useState<number>(value.length);
+  const [runtime, setRuntime] = React.useState<VimRuntime>(() => ({
+    ...INITIAL_RUNTIME,
+    state: { ...INITIAL_RUNTIME.state, text: value, cursor: value.length, mode: initialMode },
+  }));
   const lastValueRef = React.useRef<string>(value);
 
   React.useEffect(() => {
     if (value !== lastValueRef.current) {
       const delta = value.length - lastValueRef.current.length;
-      if (delta > 0) {
-        setCursor((c) => clamp(c + delta, 0, value.length));
-      } else if (delta < 0) {
-        const removedAt = lastValueRef.current.length + delta;
-        setCursor((c) => clamp(removedAt < c && c <= removedAt - delta ? removedAt : c, 0, value.length));
-      }
+      setRuntime((r) => {
+        const newCursor =
+          delta > 0
+            ? Math.min(r.state.cursor + delta, value.length)
+            : Math.max(0, r.state.cursor + delta);
+        if (newCursor === r.state.cursor && value === r.state.text) return r;
+        return { ...r, state: { ...r.state, text: value, cursor: newCursor } };
+      });
       lastValueRef.current = value;
     }
   }, [value]);
 
   useInput((input: string, key: Record<string, boolean>) => {
     if (disabled) return;
-    if (key.return) {
-      const trimmed = value.trim();
-      if (trimmed.length > 0) onSubmit(trimmed);
-      return;
-    }
-    if (key.ctrl && input === "c") {
-      process.exit(0);
-    }
-    if (key.escape) {
-      onChange("");
-      setCursor(0);
-      return;
-    }
-
-    if (key.leftArrow) {
-      setCursor((c) => clamp(c - 1, 0, value.length));
-      return;
-    }
-    if (key.rightArrow) {
-      setCursor((c) => clamp(c + 1, 0, value.length));
-      return;
-    }
-    if (key.home) {
-      setCursor(0);
-      return;
-    }
-    if (key.end) {
-      setCursor(value.length);
-      return;
-    }
-
-    if (input === "h" && !key.ctrl && !key.meta) {
-      setCursor((c) => clamp(c - 1, 0, value.length));
-      return;
-    }
-    if (input === "l" && !key.ctrl && !key.meta) {
-      setCursor((c) => clamp(c + 1, 0, value.length));
-      return;
-    }
-    if (input === "0" && !key.ctrl && !key.meta) {
-      setCursor(0);
-      return;
-    }
-    if (input === "$" && !key.ctrl && !key.meta) {
-      setCursor(value.length);
-      return;
-    }
-    if (input === "w" && !key.ctrl && !key.meta) {
-      setCursor((c) => wordForward(value, c + 1));
-      return;
-    }
-    if (input === "b" && !key.ctrl && !key.meta) {
-      setCursor((c) => wordBackward(value, c));
-      return;
-    }
-    if (input === "e" && !key.ctrl && !key.meta) {
-      let i = clamp(cursor + 1, 0, value.length);
-      while (i < value.length && !/\w/.test(value[i] ?? "")) i++;
-      while (i < value.length && /\w/.test(value[i] ?? "")) i++;
-      setCursor(clamp(i, 0, value.length));
-      return;
-    }
-
-    if (key.ctrl && input === "w") {
-      const newCursor = wordBackward(value, cursor);
-      const next = value.slice(0, newCursor) + value.slice(cursor);
-      onChange(next);
-      setCursor(newCursor);
-      return;
-    }
-    if (key.ctrl && input === "u") {
-      onChange(value.slice(cursor));
-      setCursor(0);
-      return;
-    }
-    if (key.ctrl && input === "a") {
-      setCursor(0);
-      return;
-    }
-    if (key.ctrl && input === "e") {
-      setCursor(value.length);
-      return;
-    }
-
-    if (key.backspace || key.delete) {
-      if (cursor > 0) {
-        const next = value.slice(0, cursor - 1) + value.slice(cursor);
-        onChange(next);
-        setCursor(clamp(cursor - 1, 0, next.length));
-      } else if (key.delete && cursor < value.length) {
-        const next = value.slice(0, cursor) + value.slice(cursor + 1);
-        onChange(next);
+    setRuntime((r) => {
+      const next = handleKey(input, key, r);
+      if (next.state.text !== r.state.text) {
+        lastValueRef.current = next.state.text;
+        onChange(next.state.text);
       }
-      return;
-    }
-    if (key.delete && cursor < value.length) {
-      const next = value.slice(0, cursor) + value.slice(cursor + 1);
-      onChange(next);
-      return;
-    }
-
-    if (input && !key.ctrl && !key.meta && !key.upArrow && !key.downArrow) {
-      const next = value.slice(0, cursor) + input + value.slice(cursor);
-      onChange(next);
-      setCursor(clamp(cursor + input.length, 0, next.length));
-      return;
-    }
+      if (key.return && next.state.mode === "insert") {
+        const trimmed = next.state.text.trim();
+        if (trimmed.length > 0) onSubmit(trimmed);
+        return { ...r, state: { ...next.state, mode: "insert", cursor: next.state.text.length, undoStack: [], pendingOp: "none", pendingCount: 0 } };
+      }
+      return next;
+    });
   });
 
+  const text = runtime.state.text;
+  const cursor = clampCursor(text, runtime.state.cursor);
   const placeholderText = placeholder;
-  const displayText = value || placeholderText;
-  const textColor = value ? theme.text : theme.textMuted;
-  const before = value.slice(0, cursor);
-  const at = value[cursor] ?? "";
-  const after = value.slice(cursor + at.length);
+  const displayText = text || placeholderText;
+  const textColor = text ? theme.text : theme.textMuted;
+  const before = text.slice(0, cursor);
+  const at = text[cursor] ?? "";
+  const after = text.slice(cursor + at.length);
+  const showHint = runtime.state.mode !== "insert";
 
   return (
     <Box flexDirection="column" width={width}>
@@ -216,8 +121,16 @@ export function PromptInput({
           paddingX={2}
           paddingY={1}
         >
+          <Box>
+            <Text color={modeColor(runtime.state.mode)} bold>
+              {modeLabel(runtime.state.mode)}
+            </Text>
+            {runtime.state.pendingOp !== "none" ? (
+              <Text color={theme.warning}>  {runtime.state.pendingOp}{runtime.state.pendingCount > 0 ? runtime.state.pendingCount : ""}</Text>
+            ) : null}
+          </Box>
           <Text color={textColor} wrap="wrap">
-            {value ? (
+            {text ? (
               <>
                 {before}
                 {!disabled ? <Text color={theme.accent} inverse>{at || " "}</Text> : null}
@@ -225,7 +138,7 @@ export function PromptInput({
               </>
             ) : (
               <>
-                {placeholderText}
+                {displayText}
                 {!disabled ? <Text color={theme.text}>▌</Text> : null}
               </>
             )}
@@ -246,7 +159,11 @@ export function PromptInput({
                 </>
               ) : null}
             </Box>
-            <Text color={theme.textMuted}>esc:clear  ^w:del-word  h/l:move  w/b:word  0/$:line</Text>
+            {showHint ? (
+              <Text color={theme.textMuted}>
+                {runtime.state.mode === "normal" ? "i:insert  v:visual  :w/0/$" : "esc:normal  d:delete  y:yank"}
+              </Text>
+            ) : null}
           </Box>
         </Box>
       </Box>
@@ -260,5 +177,11 @@ export function PromptInput({
   );
 }
 
-export { wordForward, wordBackward };
+function clampCursor(text: string, cursor: number): number {
+  if (cursor < 0) return 0;
+  if (cursor > text.length) return text.length;
+  return cursor;
+}
+
+export { wordForward, wordBackward } from "./PromptInput-legacy.js";
 export default PromptInput;
