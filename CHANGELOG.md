@@ -3,7 +3,53 @@
 All notable changes to pi-pro are documented here. pi-pro adheres to
 [Semantic Versioning](https://semver.org/).
 
-## v0.8.0 — UX Differentiation (in progress)
+## v0.8.1 — Modal Vim (SHIPPED 2026-06-12)
+
+Targets vs v0.8.0: full modal vim in `PromptInput` (no more insert-only).
+
+### TUI components (61 new tests in `packages/tui-pro`)
+
+| Component | Purpose |
+|---|---|
+| `util/vim.ts` | `VimState` (mode, cursor, anchor, pendingOp, pendingCount, undoStack), `VimMode` (`insert`/`normal`/`visual`), `OpKind` (`none`/`delete`/`change`/`yank`); pure functions: `applyDelete`, `applyLineDelete`, `applyLineYank`, `applyLineChange`, `pasteAfter`, `pasteBefore`, `wordForwardN`, `wordBackwardN`, `wordEndN`, `pushUndo`, `clampCursor` |
+| `util/vim-dispatch.ts` | `VimRuntime` (state + yank buffer), `YankBuffer`, `handleKey`/`handleInsertKey`/`handleNormalKey`/`handleVisualKey`, `INITIAL_RUNTIME`. Single entry point for keystroke dispatch. |
+| `PromptInput` (refactored) | Uses vim state machine. Mode badge `-- INSERT --` / `-- NORMAL --` / `-- VISUAL --`. Pending operator + count badge (`d3`, `y`, etc.). Mode hint footer. Inverse-color cursor. Backwards-compat: default mode is `insert`. |
+
+Vim bindings (in normal mode):
+- **Motions:** `h`/`l` (left/right), `w`/`b`/`e` (word forward/back/end), `0`/`$` (line start/end), `j`/`k` (line down/up)
+- **Insert mode entries:** `i` (at cursor), `a` (after), `I` (line start), `A` (line end), `o`/`O` (open new line below/above)
+- **Operators:** `d`/`c`/`y` + motion (e.g. `dw`, `cw`, `y$`); double-letter for line-wise (`dd`/`cc`/`yy`)
+- **Count prefix:** `3w`, `3dd`, etc.
+- **Paste:** `p` (after), `P` (before); char-wise and line-wise
+- **Undo:** `u` (in-memory stack via `pushUndo`)
+- **Visual mode:** `v` (char-wise), `V` (line-wise); `d`/`y`/`c` to act on selection
+- **Insert mode (default):** type to insert at cursor; `<Esc>` to enter normal mode
+
+### Decisions (this build, captured in `memory/sessions/2026-06-12-pi-pro-v081-build.md`)
+
+- Full modal vim (insert + normal + visual) in PromptInput
+- Pure functions in `util/vim.ts` for testability (no React, no Ink in vim core)
+- Single dispatch entry point `handleKey(input, key, runtime)` keeps React wrapper thin
+- Visual mode `w` lands at last char of current word (matches vim's word semantics)
+- Undo is in-memory only (no persistent undo tree); per-session
+- `PromptInput` v0.8.0 backwards-compat: cursor + key handling preserved when no vim mode passed
+- Live LLM bench still deferred (key fix required)
+
+### Test count
+
+**1130 tests across 18 packages** (was 1069 after v0.8.0; +61 new). All passing.
+
+| Package | v0.8.0 | v0.8.1 (this build) | Δ |
+|---|---|---|---|
+| tui-pro | 179 | 240 | +61 (vim core + dispatch) |
+| (other 17 packages) | 951 | 951 | 0 |
+| **TOTAL** | **1069** | **1130** | **+61** |
+
+> Live LLM bench attribution deferred: OpenCode Go key returns 401 on
+> completion endpoints. Likely cause: Go subscription not active. Fix:
+> activate at https://opencode.ai/auth, then re-run bench in a follow-up session.
+
+## v0.8.0 — UX Differentiation
 
 Targets vs v0.7.0:
 - **Long-session UX:** visible per-turn cost so users can budget each turn
@@ -40,9 +86,8 @@ Targets vs v0.7.0:
 
 ### Pending (not yet built)
 
-- Full modal vim (esc → normal mode, d/c/y, visual mode, ex commands)
-- Web session viewer (separate web app; significant scope)
 - sqlite-vss for memory-store (only if scale demands >10k chunks)
+- Web session viewer (separate web app; significant scope)
 - Live LLM bench attribution (key fix required at opencode.ai/auth)
 
 ### Test count

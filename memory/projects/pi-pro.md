@@ -130,6 +130,25 @@ Test count: **1069 / 1069 passing** (was 1016 in v0.7.0; +53 new). All 18 packag
 
 Live LLM bench attribution deferred: OpenCode Go key returns 401 on completion endpoints (works for `/v1/models` but not `/v1/messages` or `/v1/chat/completions`). Likely: Go subscription not active for this key. Fix: activate at https://opencode.ai/auth, then re-run bench in follow-up.
 
+### v0.8.1 Modal Vim — SHIPPED 2026-06-12 (CHECKPOINT)
+
+Targets vs v0.8.0: full modal vim in `PromptInput` (no more insert-only).
+
+Stack (shipped, all in `packages/tui-pro`):
+1. **`util/vim.ts`** (29 tests) — pure vim functions: VimState, VimMode (insert/normal/visual), OpKind (none/delete/change/yank), applyDelete, applyLineDelete/Change/Yank, pasteAfter/Before, wordForward/Backward/End N, pushUndo, clampCursor
+2. **`util/vim-dispatch.ts`** (32 tests) — VimRuntime, YankBuffer, handleKey/Insert/Normal/Visual, INITIAL_RUNTIME. Single dispatch entry point.
+3. **`PromptInput` refactor** — uses vim state machine. Mode badge `-- INSERT -- / -- NORMAL -- / -- VISUAL --`. Pending operator + count badge. Mode hint footer. Inverse-color cursor. Backwards-compat: default mode is `insert`.
+
+Vim bindings: h/l, w/b/e, 0/$, j/k, i/a/o, I/A/O, d/c/y + motion, dd/cc/yy, count prefix (3w, 3dd), p/P (char + line-wise), u (undo), v/V (visual), d/y/c in visual.
+
+Test count: **1130 / 1130 passing** (was 1069 in v0.8.0; +61 new). All 18 packages build clean.
+
+1 atomic commit pushed to DNDED/pi-pro master.
+
+8 bugs hit + fixed (wordEnd semantics, applyLineChange on first/last line, pushUndo ordering, setCursor anchor tracking).
+
+**CHECKPOINT reached.** Live LLM bench attribution still deferred (OpenCode Go key returns 401 on completion endpoints). Re-run in follow-up session after activating Go subscription at https://opencode.ai/auth.
+
 ### Roadmap (future)
 
 | Release | Theme |
