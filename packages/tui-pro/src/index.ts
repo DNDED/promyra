@@ -57,3 +57,5 @@ export type {
 } from "./events.js";
 export { renderDiff } from "./util/diff.js";
 export type { DiffLine, DiffLineKind } from "./util/diff.js";
+export { parseLinks } from "./util/links.js";
+export type { LinkSegment } from "./util/links.js";
